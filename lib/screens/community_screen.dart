@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/business_store_service.dart';
 
 const _kWriteCategories = ['세탁팁', '수선', '제품추천', '의류상태'];
 
@@ -38,7 +39,9 @@ class _CommunityWriteSheetState extends State<_CommunityWriteSheet> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: Container(
         decoration: const BoxDecoration(
           color: Colors.white,
@@ -51,18 +54,23 @@ class _CommunityWriteSheetState extends State<_CommunityWriteSheet> {
           children: [
             Center(
               child: Container(
-                width: 40, height: 4,
+                width: 40,
+                height: 4,
                 decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2)),
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
             const SizedBox(height: 16),
-            const Text('게시글 작성',
-                style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1D1B20))),
+            const Text(
+              '게시글 작성',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1D1B20),
+              ),
+            ),
             const SizedBox(height: 14),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -75,17 +83,22 @@ class _CommunityWriteSheetState extends State<_CommunityWriteSheet> {
                       duration: const Duration(milliseconds: 150),
                       margin: const EdgeInsets.only(right: 8),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 6),
+                        horizontal: 14,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: sel
                             ? const Color(0xFF1A39FF)
                             : const Color(0xFFF5F5F5),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: Text(cat,
-                          style: TextStyle(
-                              fontSize: 13,
-                              color: sel ? Colors.white : Colors.grey[600])),
+                      child: Text(
+                        cat,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: sel ? Colors.white : Colors.grey[600],
+                        ),
+                      ),
                     ),
                   );
                 }).toList(),
@@ -100,10 +113,13 @@ class _CommunityWriteSheetState extends State<_CommunityWriteSheet> {
                 filled: true,
                 fillColor: const Color(0xFFF8FAFF),
                 border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
               ),
             ),
             const SizedBox(height: 10),
@@ -116,10 +132,13 @@ class _CommunityWriteSheetState extends State<_CommunityWriteSheet> {
                 filled: true,
                 fillColor: const Color(0xFFF8FAFF),
                 border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -139,7 +158,8 @@ class _CommunityWriteSheetState extends State<_CommunityWriteSheet> {
                       backgroundColor: const Color(0xFF1A39FF),
                       behavior: SnackBarBehavior.floating,
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   );
                 },
@@ -149,11 +169,13 @@ class _CommunityWriteSheetState extends State<_CommunityWriteSheet> {
                   elevation: 0,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
-                child: const Text('등록하기',
-                    style:
-                        TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                child: const Text(
+                  '등록하기',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                ),
               ),
             ),
           ],
@@ -246,7 +268,9 @@ class _CommunityScreenState extends State<CommunityScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: _tabs.length, vsync: this);
-    _searchCtrl.addListener(() => setState(() => _searchQuery = _searchCtrl.text));
+    _searchCtrl.addListener(
+      () => setState(() => _searchQuery = _searchCtrl.text),
+    );
   }
 
   @override
@@ -291,11 +315,14 @@ class _CommunityScreenState extends State<CommunityScreen>
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('커뮤니티',
-            style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1D1B20))),
+        title: const Text(
+          '커뮤니티',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF1D1B20),
+          ),
+        ),
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
@@ -332,20 +359,29 @@ class _CommunityScreenState extends State<CommunityScreen>
                           decoration: InputDecoration(
                             hintText: '제목, 내용 검색...',
                             hintStyle: const TextStyle(
-                                color: Color(0xFFB0BEC5), fontSize: 14),
-                            prefixIcon: const Icon(Icons.search,
-                                color: Color(0xFF90A4AE), size: 20),
+                              color: Color(0xFFB0BEC5),
+                              fontSize: 14,
+                            ),
+                            prefixIcon: const Icon(
+                              Icons.search,
+                              color: Color(0xFF90A4AE),
+                              size: 20,
+                            ),
                             suffixIcon: _searchQuery.isNotEmpty
                                 ? IconButton(
-                                    icon: const Icon(Icons.close,
-                                        size: 18, color: Color(0xFF90A4AE)),
+                                    icon: const Icon(
+                                      Icons.close,
+                                      size: 18,
+                                      color: Color(0xFF90A4AE),
+                                    ),
                                     onPressed: () => _searchCtrl.clear(),
                                   )
                                 : null,
                             filled: true,
                             fillColor: const Color(0xFFF8FAFF),
-                            contentPadding:
-                                const EdgeInsets.symmetric(vertical: 10),
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 10,
+                            ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(24),
                               borderSide: BorderSide.none,
@@ -364,8 +400,10 @@ class _CommunityScreenState extends State<CommunityScreen>
                 indicatorWeight: 2.5,
                 isScrollable: true,
                 tabAlignment: TabAlignment.start,
-                labelStyle:
-                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                labelStyle: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
                 unselectedLabelStyle: const TextStyle(fontSize: 13),
               ),
             ],
@@ -382,22 +420,27 @@ class _CommunityScreenState extends State<CommunityScreen>
           if (_searchQuery.isNotEmpty) {
             final q = _searchQuery.toLowerCase();
             filtered = filtered
-                .where((p) =>
-                    (p['title'] as String).toLowerCase().contains(q) ||
-                    (p['content'] as String).toLowerCase().contains(q))
+                .where(
+                  (p) =>
+                      (p['title'] as String).toLowerCase().contains(q) ||
+                      (p['content'] as String).toLowerCase().contains(q),
+                )
                 .toList();
           }
           // 정렬 적용
           final sorted = List<Map<String, dynamic>>.from(filtered);
           if (_sortMode == 1) {
-            sorted.sort((a, b) => (b['likes'] as int).compareTo(a['likes'] as int));
+            sorted.sort(
+              (a, b) => (b['likes'] as int).compareTo(a['likes'] as int),
+            );
           } else if (_sortMode == 2) {
             // 최신순은 기본 순서 유지
           } else {
             // 추천순: likes + comments 합산
-            sorted.sort((a, b) =>
-                ((b['likes'] as int) + (b['comments'] as int))
-                    .compareTo((a['likes'] as int) + (a['comments'] as int)));
+            sorted.sort(
+              (a, b) => ((b['likes'] as int) + (b['comments'] as int))
+                  .compareTo((a['likes'] as int) + (a['comments'] as int)),
+            );
           }
 
           if (sorted.isEmpty) {
@@ -405,13 +448,20 @@ class _CommunityScreenState extends State<CommunityScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.search_off, size: 48, color: Color(0xFFCFD8DC)),
+                  const Icon(
+                    Icons.search_off,
+                    size: 48,
+                    color: Color(0xFFCFD8DC),
+                  ),
                   const SizedBox(height: 12),
                   Text(
                     _searchQuery.isNotEmpty
                         ? '"$_searchQuery" 검색 결과가 없어요'
                         : '아직 게시글이 없어요',
-                    style: const TextStyle(color: Color(0xFF90A4AE), fontSize: 14),
+                    style: const TextStyle(
+                      color: Color(0xFF90A4AE),
+                      fontSize: 14,
+                    ),
                   ),
                 ],
               ),
@@ -431,14 +481,23 @@ class _CommunityScreenState extends State<CommunityScreen>
                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
                 child: Row(
                   children: [
-                    _SortChip(label: '추천순', active: _sortMode == 0,
-                        onTap: () => setState(() => _sortMode = 0)),
+                    _SortChip(
+                      label: '추천순',
+                      active: _sortMode == 0,
+                      onTap: () => setState(() => _sortMode = 0),
+                    ),
                     const SizedBox(width: 8),
-                    _SortChip(label: '인기순', active: _sortMode == 1,
-                        onTap: () => setState(() => _sortMode = 1)),
+                    _SortChip(
+                      label: '인기순',
+                      active: _sortMode == 1,
+                      onTap: () => setState(() => _sortMode = 1),
+                    ),
                     const SizedBox(width: 8),
-                    _SortChip(label: '최신순', active: _sortMode == 2,
-                        onTap: () => setState(() => _sortMode = 2)),
+                    _SortChip(
+                      label: '최신순',
+                      active: _sortMode == 2,
+                      onTap: () => setState(() => _sortMode = 2),
+                    ),
                   ],
                 ),
               ),
@@ -448,52 +507,82 @@ class _CommunityScreenState extends State<CommunityScreen>
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                 child: Row(
                   children: const [
-                    Icon(Icons.local_fire_department, size: 16, color: Color(0xFF1A39FF)),
+                    Icon(
+                      Icons.local_fire_department,
+                      size: 16,
+                      color: Color(0xFF1A39FF),
+                    ),
                     SizedBox(width: 4),
-                    Text('실시간 인기글',
-                        style: TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.bold,
-                            color: Color(0xFF1A39FF))),
+                    Text(
+                      '실시간 인기글',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1A39FF),
+                      ),
+                    ),
                   ],
                 ),
               ),
-              ...hotPosts.map((p) => Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF5F8FF),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFE3EAFF)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.emoji_events_outlined,
-                              size: 16, color: Color(0xFF1A39FF)),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(p['title'] as String,
-                                style: const TextStyle(
-                                    fontSize: 13, fontWeight: FontWeight.w500,
-                                    color: Color(0xFF1D1B20)),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis),
-                          ),
-                          const SizedBox(width: 8),
-                          Row(
-                            children: [
-                              const Icon(Icons.favorite, size: 12,
-                                  color: Color(0xFFFF6161)),
-                              const SizedBox(width: 3),
-                              Text('${p['likes']}',
-                                  style: const TextStyle(
-                                      fontSize: 11, color: Color(0xFF9E9E9E))),
-                            ],
-                          ),
-                        ],
-                      ),
+              ...hotPosts.map(
+                (p) => Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
                     ),
-                  )),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF5F8FF),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFE3EAFF)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.emoji_events_outlined,
+                          size: 16,
+                          color: Color(0xFF1A39FF),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            p['title'] as String,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF1D1B20),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.favorite,
+                              size: 12,
+                              color: Color(0xFFFF6161),
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              '${p['likes']}',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFF9E9E9E),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
 
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -501,10 +590,15 @@ class _CommunityScreenState extends State<CommunityScreen>
               ),
 
               // ── 전체 게시글 ───────────────────────────────
-              ...sorted.map((p) => Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    child: _PostCard(post: p),
-                  )),
+              ...sorted.map(
+                (p) => Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
+                  child: _PostCard(post: p),
+                ),
+              ),
             ],
           );
         }).toList(),
@@ -515,8 +609,7 @@ class _CommunityScreenState extends State<CommunityScreen>
         foregroundColor: const Color(0xFF1D1B20),
         elevation: 0,
         icon: const Icon(Icons.edit),
-        label: const Text('글쓰기',
-            style: TextStyle(fontWeight: FontWeight.w600)),
+        label: const Text('글쓰기', style: TextStyle(fontWeight: FontWeight.w600)),
       ),
     );
   }
@@ -543,12 +636,29 @@ class _PostCardState extends State<_PostCard> {
 
   Color _categoryColor(String cat) {
     switch (cat) {
-      case '세탁팁': return const Color(0xFF1A39FF);
-      case '수선': return const Color(0xFFE91E63);
-      case '제품추천': return const Color(0xFF43A047);
-      case '의류상태': return const Color(0xFFFB8C00);
-      default: return Colors.grey;
+      case '세탁팁':
+        return const Color(0xFF1A39FF);
+      case '수선':
+        return const Color(0xFFE91E63);
+      case '제품추천':
+        return const Color(0xFF43A047);
+      case '의류상태':
+        return const Color(0xFFFB8C00);
+      default:
+        return Colors.grey;
     }
+  }
+
+  void _openUserProfile() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _CommunityUserProfileScreen(
+          userName: widget.post['user'] as String,
+          avatar: widget.post['avatar'] as String,
+        ),
+      ),
+    );
   }
 
   @override
@@ -578,9 +688,10 @@ class _PostCardState extends State<_PostCard> {
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 8,
-                offset: const Offset(0, 2)),
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
           ],
         ),
         child: Column(
@@ -593,55 +704,88 @@ class _PostCardState extends State<_PostCard> {
                 children: [
                   Row(
                     children: [
-                      Container(
-                        width: 38,
-                        height: 38,
-                        decoration: const BoxDecoration(
-                            color: Color(0xFFE8F4FD), shape: BoxShape.circle),
-                        child: Center(
-                          child: Text(widget.post['avatar'],
-                              style: const TextStyle(fontSize: 18)),
+                      GestureDetector(
+                        onTap: _openUserProfile,
+                        child: Container(
+                          width: 38,
+                          height: 38,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFE8F4FD),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Text(
+                              widget.post['avatar'],
+                              style: const TextStyle(fontSize: 18),
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 10),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(widget.post['user'],
+                      GestureDetector(
+                        onTap: _openUserProfile,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.post['user'],
                               style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF37474F))),
-                          Text(widget.post['time'],
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF37474F),
+                              ),
+                            ),
+                            Text(
+                              widget.post['time'],
                               style: const TextStyle(
-                                  fontSize: 11, color: Color(0xFFB0BEC5))),
-                        ],
+                                fontSize: 11,
+                                color: Color(0xFFB0BEC5),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       const Spacer(),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: catColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Text(cat,
-                            style: TextStyle(
-                                fontSize: 11, color: catColor, fontWeight: FontWeight.w600)),
+                        child: Text(
+                          cat,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: catColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
-                  Text(widget.post['title'],
-                      style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1D1B20))),
+                  Text(
+                    widget.post['title'],
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1D1B20),
+                    ),
+                  ),
                   const SizedBox(height: 6),
-                  Text(widget.post['content'],
-                      style: const TextStyle(
-                          fontSize: 13, color: Color(0xFF78909C), height: 1.5),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis),
+                  Text(
+                    widget.post['content'],
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF78909C),
+                      height: 1.5,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
               ),
             ),
@@ -654,7 +798,11 @@ class _PostCardState extends State<_PostCard> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Center(
-                  child: Icon(Icons.image_outlined, size: 38, color: Color(0xFFB0BEC5)),
+                  child: Icon(
+                    Icons.image_outlined,
+                    size: 38,
+                    color: Color(0xFFB0BEC5),
+                  ),
                 ),
               ),
             Padding(
@@ -674,25 +822,41 @@ class _PostCardState extends State<_PostCard> {
                             _isLiked ? Icons.favorite : Icons.favorite_border,
                             key: ValueKey(_isLiked),
                             size: 19,
-                            color: _isLiked ? Colors.red : const Color(0xFFB0BEC5),
+                            color: _isLiked
+                                ? Colors.red
+                                : const Color(0xFFB0BEC5),
                           ),
                         ),
                         const SizedBox(width: 4),
-                        Text('$_likes',
-                            style: TextStyle(
-                                fontSize: 13,
-                                color: _isLiked ? Colors.red : const Color(0xFF90A4AE),
-                                fontWeight: FontWeight.w500)),
+                        Text(
+                          '$_likes',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: _isLiked
+                                ? Colors.red
+                                : const Color(0xFF90A4AE),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ],
                     ),
                   ),
                   const SizedBox(width: 16),
                   Row(
                     children: [
-                      const Icon(Icons.chat_bubble_outline, size: 17, color: Color(0xFFB0BEC5)),
+                      const Icon(
+                        Icons.chat_bubble_outline,
+                        size: 17,
+                        color: Color(0xFFB0BEC5),
+                      ),
                       const SizedBox(width: 4),
-                      Text('${widget.post['comments']}',
-                          style: const TextStyle(fontSize: 13, color: Color(0xFF90A4AE))),
+                      Text(
+                        '${widget.post['comments']}',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF90A4AE),
+                        ),
+                      ),
                     ],
                   ),
                   const Spacer(),
@@ -700,15 +864,23 @@ class _PostCardState extends State<_PostCard> {
                     onTap: () {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('"${widget.post['title']}" 링크가 복사되었습니다'),
+                          content: Text(
+                            '"${widget.post['title']}" 링크가 복사되었습니다',
+                          ),
                           backgroundColor: const Color(0xFF1A39FF),
                           behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                           duration: const Duration(seconds: 2),
                         ),
                       );
                     },
-                    child: const Icon(Icons.share_outlined, size: 18, color: Color(0xFFB0BEC5)),
+                    child: const Icon(
+                      Icons.share_outlined,
+                      size: 18,
+                      color: Color(0xFFB0BEC5),
+                    ),
                   ),
                 ],
               ),
@@ -726,7 +898,11 @@ class _SortChip extends StatelessWidget {
   final bool active;
   final VoidCallback onTap;
 
-  const _SortChip({required this.label, required this.active, required this.onTap});
+  const _SortChip({
+    required this.label,
+    required this.active,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -742,11 +918,14 @@ class _SortChip extends StatelessWidget {
             color: active ? const Color(0xFF8FEAFD) : const Color(0xFFE0E0E0),
           ),
         ),
-        child: Text(label,
-            style: TextStyle(
-                fontSize: 12,
-                fontWeight: active ? FontWeight.w600 : FontWeight.w400,
-                color: const Color(0xFF494545))),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+            color: const Color(0xFF494545),
+          ),
+        ),
       ),
     );
   }
@@ -776,7 +955,12 @@ class _PostDetailScreenState extends State<_PostDetailScreen> {
   final _commentCtrl = TextEditingController();
   final List<Map<String, dynamic>> _comments = [
     {'user': '세탁마니아', 'avatar': '🧼', 'text': '정말 도움이 됐어요!', 'time': '1분 전'},
-    {'user': '옷관리왕', 'avatar': '👕', 'text': '저도 이 방법 써봤는데 효과 있어요', 'time': '5분 전'},
+    {
+      'user': '옷관리왕',
+      'avatar': '👕',
+      'text': '저도 이 방법 써봤는데 효과 있어요',
+      'time': '5분 전',
+    },
   ];
 
   @override
@@ -794,11 +978,16 @@ class _PostDetailScreenState extends State<_PostDetailScreen> {
 
   Color _categoryColor(String cat) {
     switch (cat) {
-      case '세탁팁': return const Color(0xFF1A39FF);
-      case '수선': return const Color(0xFFE91E63);
-      case '제품추천': return const Color(0xFF43A047);
-      case '의류상태': return const Color(0xFFFB8C00);
-      default: return Colors.grey;
+      case '세탁팁':
+        return const Color(0xFF1A39FF);
+      case '수선':
+        return const Color(0xFFE91E63);
+      case '제품추천':
+        return const Color(0xFF43A047);
+      case '의류상태':
+        return const Color(0xFFFB8C00);
+      default:
+        return Colors.grey;
     }
   }
 
@@ -817,6 +1006,18 @@ class _PostDetailScreenState extends State<_PostDetailScreen> {
     FocusScope.of(context).unfocus();
   }
 
+  void _openUserProfile() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _CommunityUserProfileScreen(
+          userName: widget.post['user'] as String,
+          avatar: widget.post['avatar'] as String,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cat = widget.post['category'] as String;
@@ -829,8 +1030,14 @@ class _PostDetailScreenState extends State<_PostDetailScreen> {
         elevation: 0,
         foregroundColor: const Color(0xFF1D1B20),
         centerTitle: true,
-        title: Text(cat,
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: catColor)),
+        title: Text(
+          cat,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: catColor,
+          ),
+        ),
         actions: [
           GestureDetector(
             onTap: () {
@@ -839,14 +1046,20 @@ class _PostDetailScreenState extends State<_PostDetailScreen> {
                   content: Text('"${widget.post['title']}" 링크가 복사되었습니다'),
                   backgroundColor: const Color(0xFF1A39FF),
                   behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   duration: const Duration(seconds: 2),
                 ),
               );
             },
             child: const Padding(
               padding: EdgeInsets.only(right: 16),
-              child: Icon(Icons.share_outlined, size: 20, color: Color(0xFF9E9E9E)),
+              child: Icon(
+                Icons.share_outlined,
+                size: 20,
+                color: Color(0xFF9E9E9E),
+              ),
             ),
           ),
         ],
@@ -862,49 +1075,85 @@ class _PostDetailScreenState extends State<_PostDetailScreen> {
                   // 작성자 정보
                   Row(
                     children: [
-                      Container(
-                        width: 42, height: 42,
-                        decoration: const BoxDecoration(
-                            color: Color(0xFFE8F4FD), shape: BoxShape.circle),
-                        child: Center(
-                          child: Text(widget.post['avatar'],
-                              style: const TextStyle(fontSize: 20)),
+                      GestureDetector(
+                        onTap: _openUserProfile,
+                        child: Container(
+                          width: 42,
+                          height: 42,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFE8F4FD),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Text(
+                              widget.post['avatar'],
+                              style: const TextStyle(fontSize: 20),
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 10),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(widget.post['user'],
+                      GestureDetector(
+                        onTap: _openUserProfile,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.post['user'],
                               style: const TextStyle(
-                                  fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF37474F))),
-                          Text(widget.post['time'],
-                              style: const TextStyle(fontSize: 12, color: Color(0xFFB0BEC5))),
-                        ],
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF37474F),
+                              ),
+                            ),
+                            Text(
+                              widget.post['time'],
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFFB0BEC5),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
                   // 제목
-                  Text(widget.post['title'],
-                      style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1D1B20))),
+                  Text(
+                    widget.post['title'],
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1D1B20),
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   // 본문
-                  Text(widget.post['content'],
-                      style: const TextStyle(
-                          fontSize: 14, color: Color(0xFF546E7A), height: 1.7)),
+                  Text(
+                    widget.post['content'],
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF546E7A),
+                      height: 1.7,
+                    ),
+                  ),
                   // 이미지
                   if (widget.post['hasImage'] as bool) ...[
                     const SizedBox(height: 16),
                     Container(
-                      width: double.infinity, height: 200,
+                      width: double.infinity,
+                      height: 200,
                       decoration: BoxDecoration(
                         color: const Color(0xFFE8F4FD),
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: const Center(
-                        child: Icon(Icons.image_outlined, size: 48, color: Color(0xFFB0BEC5)),
+                        child: Icon(
+                          Icons.image_outlined,
+                          size: 48,
+                          color: Color(0xFFB0BEC5),
+                        ),
                       ),
                     ),
                   ],
@@ -925,72 +1174,117 @@ class _PostDetailScreenState extends State<_PostDetailScreen> {
                             AnimatedSwitcher(
                               duration: const Duration(milliseconds: 200),
                               child: Icon(
-                                _isLiked ? Icons.favorite : Icons.favorite_border,
+                                _isLiked
+                                    ? Icons.favorite
+                                    : Icons.favorite_border,
                                 key: ValueKey(_isLiked),
                                 size: 20,
-                                color: _isLiked ? Colors.red : const Color(0xFFB0BEC5),
+                                color: _isLiked
+                                    ? Colors.red
+                                    : const Color(0xFFB0BEC5),
                               ),
                             ),
                             const SizedBox(width: 4),
-                            Text('$_likes',
-                                style: TextStyle(
-                                    fontSize: 14,
-                                    color: _isLiked ? Colors.red : const Color(0xFF90A4AE))),
+                            Text(
+                              '$_likes',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: _isLiked
+                                    ? Colors.red
+                                    : const Color(0xFF90A4AE),
+                              ),
+                            ),
                           ],
                         ),
                       ),
                       const SizedBox(width: 16),
-                      const Icon(Icons.chat_bubble_outline, size: 18, color: Color(0xFFB0BEC5)),
+                      const Icon(
+                        Icons.chat_bubble_outline,
+                        size: 18,
+                        color: Color(0xFFB0BEC5),
+                      ),
                       const SizedBox(width: 4),
-                      Text('${_comments.length}',
-                          style: const TextStyle(fontSize: 14, color: Color(0xFF90A4AE))),
+                      Text(
+                        '${_comments.length}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF90A4AE),
+                        ),
+                      ),
                     ],
                   ),
                   const Divider(height: 32, color: Color(0xFFEEEEEE)),
                   // 댓글 목록
-                  Text('댓글 ${_comments.length}개',
-                      style: const TextStyle(
-                          fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1D1B20))),
-                  const SizedBox(height: 12),
-                  ..._comments.map((c) => Padding(
-                    padding: const EdgeInsets.only(bottom: 14),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 34, height: 34,
-                          decoration: const BoxDecoration(
-                              color: Color(0xFFE8F4FD), shape: BoxShape.circle),
-                          child: Center(
-                              child: Text(c['avatar'], style: const TextStyle(fontSize: 16))),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Text(c['user'],
-                                      style: const TextStyle(
-                                          fontSize: 13, fontWeight: FontWeight.bold,
-                                          color: Color(0xFF37474F))),
-                                  const SizedBox(width: 6),
-                                  Text(c['time'],
-                                      style: const TextStyle(
-                                          fontSize: 11, color: Color(0xFFB0BEC5))),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Text(c['text'],
-                                  style: const TextStyle(
-                                      fontSize: 13, color: Color(0xFF546E7A), height: 1.5)),
-                            ],
-                          ),
-                        ),
-                      ],
+                  Text(
+                    '댓글 ${_comments.length}개',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1D1B20),
                     ),
-                  )),
+                  ),
+                  const SizedBox(height: 12),
+                  ..._comments.map(
+                    (c) => Padding(
+                      padding: const EdgeInsets.only(bottom: 14),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 34,
+                            height: 34,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFE8F4FD),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Center(
+                              child: Text(
+                                c['avatar'],
+                                style: const TextStyle(fontSize: 16),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(
+                                      c['user'],
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF37474F),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      c['time'],
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: Color(0xFFB0BEC5),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  c['text'],
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFF546E7A),
+                                    height: 1.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -998,10 +1292,16 @@ class _PostDetailScreenState extends State<_PostDetailScreen> {
           // 댓글 입력창
           Container(
             padding: EdgeInsets.fromLTRB(
-                16, 10, 16, MediaQuery.of(context).viewInsets.bottom + 16),
+              16,
+              10,
+              16,
+              MediaQuery.of(context).viewInsets.bottom + 16,
+            ),
             decoration: BoxDecoration(
               color: Colors.white,
-              border: Border(top: BorderSide(color: Colors.grey.withValues(alpha: 0.15))),
+              border: Border(
+                top: BorderSide(color: Colors.grey.withValues(alpha: 0.15)),
+              ),
             ),
             child: Row(
               children: [
@@ -1010,14 +1310,20 @@ class _PostDetailScreenState extends State<_PostDetailScreen> {
                     controller: _commentCtrl,
                     decoration: InputDecoration(
                       hintText: '댓글을 입력하세요',
-                      hintStyle: const TextStyle(color: Color(0xFFB0BEC5), fontSize: 14),
+                      hintStyle: const TextStyle(
+                        color: Color(0xFFB0BEC5),
+                        fontSize: 14,
+                      ),
                       filled: true,
                       fillColor: const Color(0xFFF8FAFF),
-                      contentPadding:
-                          const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
                       border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24),
-                          borderSide: BorderSide.none),
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: BorderSide.none,
+                      ),
                     ),
                   ),
                 ),
@@ -1025,10 +1331,17 @@ class _PostDetailScreenState extends State<_PostDetailScreen> {
                 GestureDetector(
                   onTap: _submitComment,
                   child: Container(
-                    width: 40, height: 40,
+                    width: 40,
+                    height: 40,
                     decoration: const BoxDecoration(
-                        color: Color(0xFF1A39FF), shape: BoxShape.circle),
-                    child: const Icon(Icons.send, size: 18, color: Colors.white),
+                      color: Color(0xFF1A39FF),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.send,
+                      size: 18,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ],
@@ -1036,6 +1349,217 @@ class _PostDetailScreenState extends State<_PostDetailScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _CommunityUserProfileScreen extends StatelessWidget {
+  final String userName;
+  final String avatar;
+
+  const _CommunityUserProfileScreen({
+    required this.userName,
+    required this.avatar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final stores = BusinessStoreService.getFavoriteBusinessesForUser(userName);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFDDF8FF),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close, color: Color(0xFF1D1B20)),
+                  ),
+                  const Expanded(
+                    child: Center(
+                      child: Text(
+                        '프로필',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1D1B20),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 48),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              width: 78,
+              height: 78,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFF4F4F4F), width: 2),
+                color: Colors.white.withValues(alpha: 0.7),
+              ),
+              child: Center(
+                child: Text(avatar, style: const TextStyle(fontSize: 30)),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              userName,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1D1B20),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Column(
+              children: const [
+                Icon(Icons.star, size: 26, color: Color(0xFFFFD229)),
+                SizedBox(height: 6),
+                Text(
+                  '저장 매장',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF1D1B20),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            Expanded(
+              child: Container(
+                width: double.infinity,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                child: stores.isEmpty
+                    ? const Center(
+                        child: Text(
+                          '아직 저장한 매장이 없어요.',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF8C8C8C),
+                          ),
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(18, 24, 18, 24),
+                        itemCount: stores.length,
+                        separatorBuilder: (_, _) =>
+                            const Divider(height: 26, color: Color(0xFFEAEAEA)),
+                        itemBuilder: (context, index) {
+                          final store = stores[index];
+                          return _SavedBusinessRow(store: store);
+                        },
+                      ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SavedBusinessRow extends StatelessWidget {
+  final Map<String, dynamic> store;
+
+  const _SavedBusinessRow({required this.store});
+
+  @override
+  Widget build(BuildContext context) {
+    final isVerified = store['isVerified'] == true;
+    final likes = store['likes'] as int;
+    final rating = store['rating'] as double;
+    final hours = store['hours'] as String;
+    final name = store['name'] as String;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            width: 61,
+            height: 61,
+            color: const Color(0xFF3357E0),
+            child: Icon(
+              store['type'] == '수선집' ? Icons.content_cut : Icons.cloud,
+              color: Colors.white,
+              size: 28,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      name,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1D1B20),
+                      ),
+                    ),
+                  ),
+                  if (isVerified)
+                    const Icon(
+                      Icons.check_circle,
+                      size: 16,
+                      color: Color(0xFF79D34C),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                hours,
+                style: const TextStyle(fontSize: 12, color: Color(0xFF6E6E6E)),
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Icon(
+                    Icons.favorite,
+                    size: 14,
+                    color: Colors.red.withValues(alpha: 0.7),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '$likes',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF7A7A7A),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Icon(Icons.star, size: 14, color: Color(0xFFFFD229)),
+                  const SizedBox(width: 4),
+                  Text(
+                    '$rating',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF7A7A7A),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
