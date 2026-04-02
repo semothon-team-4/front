@@ -15,6 +15,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _pushEnabled = true;
   bool _laundryAlarm = true;
   bool _communityAlarm = false;
+  late final TextEditingController _nicknameCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _nicknameCtrl = TextEditingController(text: _nickname);
+  }
+
+  @override
+  void dispose() {
+    _nicknameCtrl.dispose();
+    super.dispose();
+  }
 
   // ── 프로필 사진 변경 ──────────────────────────────────────────
   Future<void> _pickProfileImage() async {
@@ -79,14 +92,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // ── 닉네임 수정 다이얼로그 ────────────────────────────────────
   Future<void> _editNickname() async {
-    final ctrl = TextEditingController(text: _nickname);
+    _nicknameCtrl
+      ..text = _nickname
+      ..selection = TextSelection.collapsed(offset: _nickname.length);
     final result = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('닉네임 수정'),
         content: TextField(
-          controller: ctrl,
+          controller: _nicknameCtrl,
           autofocus: true,
           maxLength: 20,
           decoration: InputDecoration(
@@ -105,7 +120,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: const Text('취소'),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+            onPressed: () {
+              final nextNickname = _nicknameCtrl.text.trim();
+              Navigator.pop(ctx, nextNickname);
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF8FEAFD),
               foregroundColor: const Color(0xFF1D1B20),
@@ -116,10 +134,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
     );
-    if (result != null && result.isNotEmpty && mounted) {
+    if (!mounted) return;
+    if (result != null && result.isNotEmpty) {
       setState(() => _nickname = result);
     }
-    ctrl.dispose();
   }
 
   // ── 탈퇴 확인 다이얼로그 ─────────────────────────────────────
