@@ -103,77 +103,98 @@ class _TutorialScreenState extends State<TutorialScreen> {
                 onPageChanged: (index) => setState(() => _currentPage = index),
                 itemBuilder: (context, index) {
                   final page = _pages[index];
+                  final pageHeight = MediaQuery.of(context).size.height;
+                  final isCompact = pageHeight < 760;
                   return Padding(
                     padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 24),
-                        Expanded(
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(28),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(28),
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  const Color(0xFFDDF8FF),
-                                  page.accent.withValues(alpha: 0.12),
-                                ],
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        return SizedBox.expand(
+                          child: Center(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.topCenter,
+                              child: SizedBox(
+                                width: constraints.maxWidth,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    SizedBox(height: isCompact ? 8 : 24),
+                                    Container(
+                                      width: double.infinity,
+                                      padding: EdgeInsets.fromLTRB(
+                                        28,
+                                        isCompact ? 20 : 28,
+                                        28,
+                                        isCompact ? 16 : 28,
+                                      ),
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Container(
+                                            width: isCompact ? 104 : 120,
+                                            height: isCompact ? 104 : 120,
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withValues(
+                                                alpha: 0.88,
+                                              ),
+                                              shape: BoxShape.circle,
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: page.accent.withValues(
+                                                    alpha: 0.16,
+                                                  ),
+                                                  blurRadius: 24,
+                                                  offset: const Offset(0, 12),
+                                                ),
+                                              ],
+                                            ),
+                                            child: Icon(
+                                              page.icon,
+                                              size: isCompact ? 48 : 56,
+                                              color: page.accent,
+                                            ),
+                                          ),
+                                          SizedBox(height: isCompact ? 24 : 36),
+                                          Text(
+                                            page.title,
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              fontSize: isCompact ? 24 : 28,
+                                              height: 1.3,
+                                              fontWeight: FontWeight.w800,
+                                              color: const Color(0xFF1D1B20),
+                                            ),
+                                          ),
+                                          SizedBox(height: isCompact ? 14 : 18),
+                                          Text(
+                                            page.description,
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              fontSize: isCompact ? 14 : 15,
+                                              height: 1.7,
+                                              color: const Color(0xFF5E6B76),
+                                            ),
+                                          ),
+                                          SizedBox(height: isCompact ? 16 : 28),
+                                          Align(
+                                            alignment: const Alignment(1.6, 0.1),
+                                            child: Image.asset(
+                                              'assets/images/tutorial_mascot_wave.png',
+                                              width: isCompact ? 104 : 124,
+                                              fit: BoxFit.contain,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Container(
-                                  width: 120,
-                                  height: 120,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.88),
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: page.accent.withValues(
-                                          alpha: 0.16,
-                                        ),
-                                        blurRadius: 24,
-                                        offset: const Offset(0, 12),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Icon(
-                                    page.icon,
-                                    size: 56,
-                                    color: page.accent,
-                                  ),
-                                ),
-                                const SizedBox(height: 36),
-                                Text(
-                                  page.title,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    fontSize: 28,
-                                    height: 1.3,
-                                    fontWeight: FontWeight.w800,
-                                    color: Color(0xFF1D1B20),
-                                  ),
-                                ),
-                                const SizedBox(height: 18),
-                                Text(
-                                  page.description,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    height: 1.7,
-                                    color: Color(0xFF5E6B76),
-                                  ),
-                                ),
-                              ],
-                            ),
                           ),
-                        ),
-                      ],
+                        );
+                      },
                     ),
                   );
                 },

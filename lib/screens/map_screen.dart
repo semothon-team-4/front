@@ -1,6 +1,9 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
-import 'register_screen.dart';
+import '../services/business_store_service.dart';
+import '../services/shop_service.dart';
 import 'community_screen.dart';
 
 class MapScreen extends StatefulWidget {
@@ -19,16 +22,16 @@ class _MapScreenState extends State<MapScreen> {
   final _searchCtrl = TextEditingController();
   final _sheetCtrl = DraggableScrollableController();
   final _compactSheetCtrl = DraggableScrollableController();
-  double _sheetExtent = 0.35;
   double _compactSheetExtent = 0.35;
   NaverMapController? _mapController;
+  bool _isLoadingShops = true;
+  double _currentCenterLat = _fixedLat;
+  double _currentCenterLng = _fixedLng;
+  int _shopRequestId = 0;
 
   @override
   void initState() {
     super.initState();
-    _sheetCtrl.addListener(() {
-      if (mounted) setState(() => _sheetExtent = _sheetCtrl.size);
-    });
     _compactSheetCtrl.addListener(() {
       if (mounted) setState(() => _compactSheetExtent = _compactSheetCtrl.size);
     });
@@ -46,83 +49,8 @@ class _MapScreenState extends State<MapScreen> {
   static const _fixedLat = 37.2430;
   static const _fixedLng = 127.0760;
 
-  final List<Map<String, dynamic>> _businesses = [
-    {
-      'name': '크린토피아 홈플러스 영통점',
-      'kakaoPlaceId': '163269301',
-      'type': '세탁소',
-      'rating': 3.0,
-      'reviews': 32,
-      'likes': 123,
-      'isLiked': false,
-      'isVerified': true,
-      'distance': '350m',
-      'distanceM': 350,
-      'address': '경기 수원시 영통구 봉영로 1576',
-      'tags': ['드라이클리닝', '운동화세탁'],
-      'isOpen': true,
-      'hours': '10:00 - 21:00',
-      'lat': 37.2414807483987,
-      'lng': 127.073526926382,
-      'imagePath': null,    },
-    {
-      'name': '화이트 365 수원 영통점',
-      'kakaoPlaceId': '1630247871',
-      'type': '세탁소',
-      'rating': 4.0,
-      'reviews': 51,
-      'likes': 51,
-      'isLiked': false,
-      'isVerified': false,
-      'distance': '420m',
-      'distanceM': 420,
-      'address': '경기 수원시 영통구 청명남로 39',
-      'tags': ['24시간', '무인빨래방'],
-      'isOpen': true,
-      'hours': '24시간 영업',
-      'lat': 37.2406555567841,
-      'lng': 127.073259023517,
-      'imagePath': 'assets/images/shop2.jpg', // Placeholder
-    },
-    {
-      'name': '얼룩빼기이박사 박종술 명품 세탁',
-      'kakaoPlaceId': '20034435',
-      'type': '세탁소',
-      'rating': 4.5,
-      'reviews': 67,
-      'likes': 254,
-      'isLiked': false,
-      'isVerified': true,
-      'distance': '620m',
-      'distanceM': 620,
-      'address': '경기 수원시 영통구 반달로 7번길 16',
-      'tags': ['명품세탁', '얼룩제거'],
-      'isOpen': false,
-      'hours': '영업 종료, 내일 휴무',
-      'lat': 37.2403517002043,
-      'lng': 127.072123835207,
-      'imagePath': 'assets/images/shop3.jpg', // Placeholder
-    },
-    {
-      'name': '조은옷수선',
-      'kakaoPlaceId': '25575688',
-      'type': '수선집',
-      'rating': 4.6,
-      'reviews': 29,
-      'likes': 74,
-      'isLiked': false,
-      'isVerified': false,
-      'distance': '1.1km',
-      'distanceM': 1100,
-      'address': '경기 수원시 영통구 봉영로 1569',
-      'tags': ['기장수선', '지퍼교체'],
-      'isOpen': true,
-      'hours': '10:00 - 19:00',
-      'lat': 37.25206054677226,
-      'lng': 127.07101232386925,
-      'imagePath': null,
-    },
-  ];
+  List<Map<String, dynamic>> get _businesses =>
+      BusinessStoreService.getBusinesses();
 
   List<Map<String, dynamic>> get _filteredAndSorted {
     var list = _selectedType == 0
@@ -158,10 +86,10 @@ class _MapScreenState extends State<MapScreen> {
 
   void _toggleLike(String name) {
     setState(() {
-      final b = _businesses.firstWhere((x) => x['name'] == name);
-      final liked = b['isLiked'] as bool;
-      b['isLiked'] = !liked;
-      b['likes'] = (b['likes'] as int) + (liked ? -1 : 1);
+      BusinessStoreService.toggleLike(name);
+      if (_selectedBusiness != null && _selectedBusiness!['name'] == name) {
+        _selectedBusiness = _businesses.firstWhere((x) => x['name'] == name);
+      }
     });
   }
 
@@ -170,7 +98,7 @@ class _MapScreenState extends State<MapScreen> {
       _selectedBusiness = business;
       _compactSheetExtent = 0.35; // 상태 즉시 초기화
     });
-    
+
     // 지도 카메라 이동
     _mapController?.updateCamera(NCameraUpdate.withParams(
       target: NLatLng(business['lat'] as double, business['lng'] as double),
@@ -185,12 +113,202 @@ class _MapScreenState extends State<MapScreen> {
     });
   }
 
+  Future<void> _loadNearbyShops({
+    required double lat,
+    required double lng,
+  }) async {
+    final requestId = ++_shopRequestId;
+    if (mounted) {
+      setState(() {
+        _isLoadingShops = true;
+        _currentCenterLat = lat;
+        _currentCenterLng = lng;
+      });
+    }
+
+    try {
+      final shops = await ShopService.fetchNearbyShops(
+        lat: lat,
+        lng: lng,
+      );
+
+      if (requestId != _shopRequestId) return;
+
+      final mapped = shops.map((shop) {
+        final shopLat = (shop['lat'] as num?)?.toDouble() ?? lat;
+        final shopLng = (shop['lng'] as num?)?.toDouble() ?? lng;
+        final distanceM = _distanceBetweenMeters(
+          lat,
+          lng,
+          shopLat,
+          shopLng,
+        ).round();
+
+        return {
+          'id': shop['id'],
+          'placeId': shop['placeId'] ?? '',
+          'name': shop['name'] ?? '',
+          'type': _inferType(shop['name'] as String? ?? ''),
+          'rating': 0.0,
+          'reviews': 0,
+          'likes': 0,
+          'isLiked': false,
+          'isVerified': false,
+          'distance': _formatDistance(distanceM),
+          'distanceM': distanceM,
+          'address': shop['address'] ?? '',
+          'tags': <String>[],
+          'isOpen': true,
+          'hours': '영업 정보 없음',
+          'lat': shopLat,
+          'lng': shopLng,
+          'imagePath': null,
+        };
+      }).toList();
+
+      BusinessStoreService.syncBusinesses(mapped);
+      await _refreshMapMarkers();
+
+      if (!mounted || requestId != _shopRequestId) return;
+      setState(() {
+        if (_selectedBusiness != null) {
+          final selectedName = _selectedBusiness!['name'];
+          final selected = _businesses.where((b) => b['name'] == selectedName);
+          _selectedBusiness = selected.isEmpty ? null : selected.first;
+        }
+      });
+    } catch (e) {
+      if (!mounted || requestId != _shopRequestId) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.toString().replaceFirst('Exception: ', ''),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted && requestId == _shopRequestId) {
+        setState(() => _isLoadingShops = false);
+      }
+    }
+  }
+
+  Future<void> _refreshMapMarkers() async {
+    final controller = _mapController;
+    if (controller == null || !mounted) return;
+
+    await controller.clearOverlays(type: NOverlayType.marker);
+    if (!mounted) return;
+
+    final myLocIcon = await NOverlayImage.fromWidget(
+      context: context,
+      size: const Size(26, 26),
+      widget: const _MyLocationDot(),
+    );
+    if (!mounted) return;
+
+    await controller.addOverlay(
+      NMarker(
+        id: 'my_location',
+        position: const NLatLng(_fixedLat, _fixedLng),
+        icon: myLocIcon,
+      ),
+    );
+
+    for (final business in _businesses) {
+      if (!mounted) return;
+      final isLaundry = business['type'] == '세탁소';
+      final isVerified = business['isVerified'] ?? false;
+      final icon = await NOverlayImage.fromWidget(
+        context: context,
+        size: const Size(46, 46),
+        widget: _BusinessMarkerIcon(
+          isLaundry: isLaundry,
+          isVerified: isVerified,
+        ),
+      );
+      if (!mounted) return;
+
+      final marker = NMarker(
+        id: business['name'] as String,
+        position: NLatLng(
+          (business['lat'] as num).toDouble(),
+          (business['lng'] as num).toDouble(),
+        ),
+        icon: icon,
+      );
+      marker.setOnTapListener((_) => _onBusinessSelected(business));
+      await controller.addOverlay(marker);
+    }
+  }
+
+  Future<void> _handleCameraIdle() async {
+    final controller = _mapController;
+    if (controller == null) return;
+
+    final position = await controller.getCameraPosition();
+    final target = position.target;
+    final movedDistance = _distanceBetweenMeters(
+      _currentCenterLat,
+      _currentCenterLng,
+      target.latitude,
+      target.longitude,
+    );
+
+    if (movedDistance < 30) return;
+
+    await _loadNearbyShops(
+      lat: target.latitude,
+      lng: target.longitude,
+    );
+  }
+
+  String _inferType(String name) {
+    if (name.contains('수선')) {
+      return '수선집';
+    }
+    return '세탁소';
+  }
+
+  String _formatDistance(int meters) {
+    if (meters >= 1000) {
+      return '${(meters / 1000).toStringAsFixed(1)}km';
+    }
+    return '${meters}m';
+  }
+
+  double _distanceBetweenMeters(
+    double lat1,
+    double lng1,
+    double lat2,
+    double lng2,
+  ) {
+    const earthRadius = 6371000.0;
+    final dLat = _degToRad(lat2 - lat1);
+    final dLng = _degToRad(lng2 - lng1);
+    final a =
+        (sin(dLat / 2) * sin(dLat / 2)) +
+        cos(_degToRad(lat1)) *
+            cos(_degToRad(lat2)) *
+            (sin(dLng / 2) * sin(dLng / 2));
+    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return earthRadius * c;
+  }
+
+  double _degToRad(double degree) => degree * pi / 180.0;
+
   @override
   Widget build(BuildContext context) {
     final sorted = _filteredAndSorted;
     return Scaffold(
       body: Stack(
         children: [
+          if (_isLoadingShops)
+            const Center(
+              child: CircularProgressIndicator(
+                color: Color(0xFF1A39FF),
+              ),
+            ),
           // ── 네이버 지도 ────────────────────────────────────
           NaverMap(
             options: NaverMapViewOptions(
@@ -203,70 +321,13 @@ class _MapScreenState extends State<MapScreen> {
             ),
             onMapReady: (controller) async {
               _mapController = controller;
-              if (!mounted) return;
-              final ctx = context;
               await controller.updateCamera(NCameraUpdate.withParams(
                 target: const NLatLng(_fixedLat, _fixedLng),
                 zoom: 15,
               ));
-
-              // ── 내 위치 마커 ──
-              final myLocIcon = await NOverlayImage.fromWidget(
-                context: ctx,
-                size: const Size(26, 26),
-                widget: const _MyLocationDot(),
-              );
-              if (!mounted) return;
-              await controller.addOverlay(NMarker(
-                id: 'my_location',
-                position: const NLatLng(_fixedLat, _fixedLng),
-                icon: myLocIcon,
-              ));
-
-              // ── 업체 마커 ──
-              for (final b in _businesses) {
-                if (!mounted) return;
-                final isLaundry = b['type'] == '세탁소';
-                final isVerified = b['isVerified'] ?? false;
-                final icon = await NOverlayImage.fromWidget(
-                  context: ctx,
-                  size: const Size(46, 46),
-                  widget: _BusinessMarkerIcon(isLaundry: isLaundry, isVerified: isVerified),
-                );
-                if (!mounted) return;
-                final marker = NMarker(
-                  id: b['name'] as String,
-                  position: NLatLng(b['lat'] as double, b['lng'] as double),
-                  icon: icon,
-                );
-                marker.setOnTapListener((_) => _onBusinessSelected(b));
-                await controller.addOverlay(marker);
-              }
+              await _loadNearbyShops(lat: _fixedLat, lng: _fixedLng);
             },
-          ),
-
-          // ── 상단 정보 바 (영통1동) ──
-          AnimatedOpacity(
-            duration: const Duration(milliseconds: 200),
-            opacity: _selectedBusiness == null ? 1.0 : (_compactSheetExtent > 0.8 ? 0.0 : 1.0),
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-                child: Row(
-                  children: [
-                    const Icon(Icons.location_on, color: Colors.black, size: 28),
-                    const SizedBox(width: 8),
-                    const Text('영통1동',
-                        style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.black)),
-                    const Spacer(),
-                    const Icon(Icons.menu, color: Colors.black, size: 28),
-                  ],
-                ),
-              ),
-            ),
+            onCameraIdle: _handleCameraIdle,
           ),
 
           // ── 우측 플로팅 버튼 (내 위치) ──
@@ -278,7 +339,7 @@ class _MapScreenState extends State<MapScreen> {
                 final extent = _sheetCtrl.isAttached ? _sheetCtrl.size : 0.35;
                 final screenH = MediaQuery.of(context).size.height;
                 final fabBottom = screenH * extent + 16;
-                final searchBarBottom = 172.0;
+                final searchBarBottom = 112.0;
                 final fabTop = screenH - fabBottom - 44;
                 final isCollision = fabTop < searchBarBottom + 60;
 
@@ -296,7 +357,7 @@ class _MapScreenState extends State<MapScreen> {
 
           // ── 상단 검색바 ────────────────────────────────────
           Positioned(
-            top: 120, // 위치 조정
+            top: MediaQuery.of(context).padding.top + 12,
             left: 16, right: 16,
             child: AnimatedOpacity(
               duration: const Duration(milliseconds: 200),
@@ -462,7 +523,7 @@ class _MapScreenState extends State<MapScreen> {
                         controller: scrollController,
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         itemCount: sorted.length,
-                        separatorBuilder: (_, __) => const Divider(height: 32, color: Color(0xFFEEEEEE)),
+                        separatorBuilder: (_, index) => const Divider(height: 32, color: Color(0xFFEEEEEE)),
                         itemBuilder: (context, i) => _BusinessCard(
                           business: sorted[i],
                           onLike: () => _toggleLike(sorted[i]['name'] as String),
