@@ -70,6 +70,21 @@ class _ScanScreenState extends State<ScanScreen>
       });
     } catch (e) {
       if (!mounted) return;
+      if (_mode == _ScanMode.clothing) {
+        setState(() {
+          _analysisResult = _buildMockClothingAnalysis(file);
+          _isAnalyzing = false;
+          _scanComplete = true;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('임시 분석 결과로 미리보기를 보여드리고 있어요.'),
+            backgroundColor: Color(0xFF1A39FF),
+          ),
+        );
+        return;
+      }
+
       setState(() {
         _isAnalyzing = false;
         _scanComplete = false;
@@ -78,6 +93,35 @@ class _ScanScreenState extends State<ScanScreen>
         SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
       );
     }
+  }
+
+  Map<String, dynamic> _buildMockClothingAnalysis(File file) {
+    final fileName = file.path.split('/').last.toLowerCase();
+    final category =
+        fileName.contains('pants') ||
+            fileName.contains('denim') ||
+            fileName.contains('jean')
+        ? '하의'
+        : fileName.contains('coat') ||
+              fileName.contains('jacket') ||
+              fileName.contains('outer')
+        ? '아우터'
+        : '기타';
+
+    return {
+      'name': '데님 팬츠',
+      'category': category,
+      'grade': 'B',
+      'recommendation': '기본적인 관리는 가능하지만 일부 주의가 필요해요.',
+      'desc': '기본적인 관리는 가능하지만 일부 주의가 필요해요.',
+      'stainLevel': 10,
+      'damageLevel': 40,
+      'careLabels': const [
+        {'name': '면'},
+        {'name': '폴리에스터'},
+      ],
+      'imageUrl': '',
+    };
   }
 
   Future<void> _startClothingScanFlow() async {
@@ -152,6 +196,7 @@ class _ScanScreenState extends State<ScanScreen>
         onNavigate: widget.onNavigate,
         onBack: () => setState(() => _resultPage = -1),
         onSave: _saveToWardrobe,
+        onSaveImage: _saveScannedImage,
         onReset: _reset,
         onStartClothingScan: _startClothingScanFlow,
       );
@@ -517,6 +562,33 @@ class _ScanScreenState extends State<ScanScreen>
     nameCtrl.dispose();
     categoryNotifier.dispose();
   }
+
+  Future<void> _saveScannedImage() async {
+    if (_scannedImage == null || !mounted) return;
+
+    final now = DateTime.now();
+    final savedPath = await ImageService.saveImageLocally(
+      _scannedImage!,
+      'scan_result_${now.millisecondsSinceEpoch}.jpg',
+    );
+
+    if (!mounted) return;
+
+    if (savedPath != null) {
+      ImageService.showSaveSuccess(context, '스캔 이미지를 저장했어요.');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('이미지를 저장하지 못했어요. 다시 시도해주세요.'),
+          backgroundColor: const Color(0xFFE57373),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    }
+  }
 }
 
 // ─── 스캔 완료 카드 (Figma 화면10) ───────────────────────────────
@@ -629,6 +701,7 @@ class _TagScanResultScreen extends StatelessWidget {
   final ValueChanged<int>? onNavigate;
   final VoidCallback onBack;
   final VoidCallback onSave;
+  final Future<void> Function() onSaveImage;
   final VoidCallback onReset;
   final VoidCallback onStartClothingScan;
 
@@ -639,6 +712,7 @@ class _TagScanResultScreen extends StatelessWidget {
     required this.onNavigate,
     required this.onBack,
     required this.onSave,
+    required this.onSaveImage,
     required this.onReset,
     required this.onStartClothingScan,
   });
@@ -937,15 +1011,42 @@ class _TagScanResultScreen extends StatelessWidget {
     final subtitle = careLabels.isEmpty
         ? '$title · $category'
         : '$title · ${careLabels.map((label) => label['name']).join(' / ')}';
+    final gradeColor = switch (grade) {
+      'A' => const Color(0xFF7CCF7C),
+      'B' => const Color(0xFFF5B38A),
+      'C' => const Color(0xFFE6BE55),
+      'D' => const Color(0xFFE16A6A),
+      _ => const Color(0xFFF5B38A),
+    };
+    final guideTitle = switch (grade) {
+      'A' => '관리 가이드',
+      'B' => '관리 가이드',
+      'C' => '세탁 전 주의사항',
+      'D' => '즉시 관리가 필요해요',
+      _ => '관리 가이드',
+    };
+    final guideBody = switch (grade) {
+      'A' => '옷 상태가 매우 좋아요. 현재 상태 그대로 보관하면 오래 입을 수 있어요.',
+      'B' => '기본적인 관리는 가능하지만 일부 주의가 필요해요.',
+      'C' => '세탁 방식과 건조 온도를 한 번 더 확인한 뒤 관리하는 걸 권장해요.',
+      'D' => '손상 위험이 높아 세탁 전에 관리법을 꼭 다시 확인해주세요.',
+      _ => '기본적인 관리는 가능하지만 일부 주의가 필요해요.',
+    };
+    final guideTip = switch (grade) {
+      'A' => '데님은 접어서 서늘한 곳에 보관하거나 허리 부분을 집게로 잡아 걸어두면 형태 유지에 좋습니다.',
+      'B' => '데님은 접어서 서늘한 곳에 보관하거나 허리 부분을 집게로 잡아 걸어두면 형태 유지에 좋습니다.',
+      'C' => '세탁망을 사용하고 강한 탈수는 피하면 원단 손상을 줄일 수 있어요.',
+      'D' => '오염 부위는 문지르기보다 중성세제를 묻혀 불린 뒤 관리하는 편이 안전해요.',
+      _ => '데님은 접어서 서늘한 곳에 보관하거나 허리 부분을 집게로 잡아 걸어두면 형태 유지에 좋습니다.',
+    };
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
-            // 헤더
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
               child: Row(
                 children: [
                   IconButton(
@@ -956,13 +1057,20 @@ class _TagScanResultScreen extends StatelessWidget {
                     onPressed: onBack,
                   ),
                   const Spacer(),
-                  const Text(
-                    '스캔 완료!',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1D1B20),
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Text('✨', style: TextStyle(fontSize: 15)),
+                      SizedBox(width: 4),
+                      Text(
+                        '스캔 완료!',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1D1B20),
+                        ),
+                      ),
+                    ],
                   ),
                   const Spacer(),
                   const SizedBox(width: 48),
@@ -971,23 +1079,22 @@ class _TagScanResultScreen extends StatelessWidget {
             ),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 28),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // 스캔 이미지
                     ClipRRect(
                       borderRadius: BorderRadius.circular(4),
                       child: image != null
                           ? Image.file(
                               image!,
-                              width: 219,
-                              height: 292,
+                              width: double.infinity,
+                              height: 240,
                               fit: BoxFit.cover,
                             )
                           : Container(
-                              width: 219,
-                              height: 292,
+                              width: double.infinity,
+                              height: 240,
                               color: const Color(0xFFF0F7FA),
                               child: const Center(
                                 child: Icon(
@@ -998,101 +1105,88 @@ class _TagScanResultScreen extends StatelessWidget {
                               ),
                             ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 10),
                     Text(
                       subtitle,
                       textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF7B7B7B),
                       ),
                     ),
-                    const SizedBox(height: 18),
-
+                    const SizedBox(height: 14),
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFDCF9FF),
-                        borderRadius: BorderRadius.circular(18),
+                        color: const Color(0xFFCFEFFC),
+                        borderRadius: BorderRadius.circular(22),
                       ),
-                      child: Column(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      '내 옷의 등급은?',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFF1D1B20),
-                                      ),
-                                    ),
-                                    SizedBox(height: 20),
-                                    _ClothingMetricRow(
-                                      label: '오염도',
-                                      value: stainLevel / 100,
-                                      color: const Color(0xFF98DA9A),
-                                      valueLabel: '$stainLevel%',
-                                    ),
-                                    SizedBox(height: 14),
-                                    _ClothingMetricRow(
-                                      label: '손상도',
-                                      value: damageLevel / 100,
-                                      color: const Color(0xFFB73D3D),
-                                      valueLabel: '$damageLevel%',
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Container(
-                                width: 110,
-                                height: 110,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: const Color(0xFF8FEAFD),
-                                    width: 2.5,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  '내 옷의 등급은?',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF1D1B20),
                                   ),
                                 ),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      grade,
-                                      style: TextStyle(
-                                        fontSize: 54,
-                                        fontWeight: FontWeight.w300,
-                                        height: 0.95,
-                                        color: Color(0xFFF5B38A),
-                                      ),
-                                    ),
-                                    SizedBox(height: 2),
-                                    Text(
-                                      '등급',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFF666666),
-                                      ),
-                                    ),
-                                  ],
+                                const SizedBox(height: 14),
+                                _ClothingMetricRow(
+                                  label: '오염도',
+                                  value: stainLevel / 100,
+                                  color: const Color(0xFF84D08A),
+                                  valueLabel: '$stainLevel%',
                                 ),
-                              ),
-                            ],
+                                const SizedBox(height: 12),
+                                _ClothingMetricRow(
+                                  label: '손상도',
+                                  value: damageLevel / 100,
+                                  color: const Color(0xFFC94A4A),
+                                  valueLabel: '$damageLevel%',
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          SizedBox(
+                            width: 72,
+                            child: Column(
+                              children: [
+                                Text(
+                                  grade,
+                                  style: TextStyle(
+                                    fontSize: 58,
+                                    fontWeight: FontWeight.w300,
+                                    height: 0.95,
+                                    color: gradeColor,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                const Text(
+                                  '등급',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF666666),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                     Text(
                       recommendation,
                       textAlign: TextAlign.center,
@@ -1112,71 +1206,74 @@ class _TagScanResultScreen extends StatelessWidget {
                         color: Color(0xFF9A9A9A),
                       ),
                     ),
-                    const SizedBox(height: 12),
-
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: GestureDetector(
-                        onTap: () => showDialog(
-                          context: context,
-                          builder: (_) => AlertDialog(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            title: const Text(
-                              '등급 기준',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            content: const Text(
-                              'A등급: 일반적인 세탁과 관리로도 손상 위험이 낮아요.\n'
-                              'B등급: 기본적인 관리는 가능하지만 일부 주의가 필요해요.\n'
-                              'C등급: 세탁 방법이나 건조 방식에 따라 손상될 수 있어요.\n'
-                              'D등급: 손상될 위험이 높아 세심한 관리가 필요해요.',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Color(0xFF1A39FF),
-                                height: 1.7,
-                              ),
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text('확인'),
-                              ),
-                            ],
+                    const SizedBox(height: 14),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFCFEFFC),
+                        borderRadius: BorderRadius.circular(22),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
                           ),
-                        ),
-                        child: const Column(
-                          children: [
-                            Icon(
-                              Icons.info_outline,
-                              size: 18,
-                              color: Color(0xFF777777),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            guideTitle,
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF333333),
                             ),
-                            SizedBox(height: 2),
-                            Text(
-                              '등급 기준',
-                              style: TextStyle(
-                                fontSize: 9,
-                                color: Color(0xFF777777),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            guideBody,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              height: 1.6,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF4F4F4F),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 14,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFD9D9D9),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Text(
+                              guideTip,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                height: 1.55,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF5D5D5D),
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 18),
-
+                    const SizedBox(height: 20),
                     Row(
                       children: [
                         Expanded(
                           child: _ResultActionButton(
                             label: '이미지 저장하기',
                             icon: Icons.download_outlined,
-                            onTap: onReset,
+                            onTap: () => onSaveImage(),
                             isPrimary: false,
                           ),
                         ),
@@ -1192,14 +1289,12 @@ class _TagScanResultScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 10),
-                    Center(
-                      child: SizedBox(
-                        width: 148,
-                        child: _ResultActionButton(
-                          label: '내 옷장에 등록하기',
-                          onTap: onSave,
-                          isPrimary: true,
-                        ),
+                    SizedBox(
+                      width: double.infinity,
+                      child: _ResultActionButton(
+                        label: '내 옷장에 등록하기',
+                        onTap: onSave,
+                        isPrimary: true,
                       ),
                     ),
                   ],
@@ -1247,10 +1342,26 @@ class _ClothingMetricRow extends StatelessWidget {
             borderRadius: BorderRadius.circular(999),
             child: Stack(
               children: [
-                Container(height: 8, color: const Color(0xFFE8E5E5)),
+                Container(height: 8, color: const Color(0xFFD3D2D2)),
                 FractionallySizedBox(
                   widthFactor: value,
                   child: Container(height: 8, color: color),
+                ),
+                Positioned(
+                  left: (value * 100).clamp(0, 100) == 0 ? 0 : null,
+                  right: (value * 100).clamp(0, 100) == 100 ? 0 : null,
+                  child: Align(
+                    alignment: Alignment(-1 + (value * 2), 0),
+                    child: Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: color, width: 2),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
