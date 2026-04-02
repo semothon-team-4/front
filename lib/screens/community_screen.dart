@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../services/business_store_service.dart';
 import 'community_write_screen.dart';
+import '../widgets/mascot_profile_avatar.dart';
 
 const _kWriteCategories = ['세탁팁', '수선', '제품추천', '의류상태'];
 
@@ -534,19 +535,9 @@ class _PostCardState extends State<_PostCard> {
                     children: [
                       GestureDetector(
                         onTap: _openUserProfile,
-                        child: Container(
-                          width: 38,
-                          height: 38,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFE8F4FD),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: Text(
-                              widget.post['avatar'],
-                              style: const TextStyle(fontSize: 18),
-                            ),
-                          ),
+                        child: const MascotProfileAvatar(
+                          size: 38,
+                          backgroundColor: Color(0xFFE8F4FD),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -1076,19 +1067,9 @@ class _PostDetailScreenState extends State<_PostDetailScreen> {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            width: 34,
-                            height: 34,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFE8F4FD),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Center(
-                              child: Text(
-                                c['avatar'],
-                                style: const TextStyle(fontSize: 16),
-                              ),
-                            ),
+                          const MascotProfileAvatar(
+                            size: 34,
+                            backgroundColor: Color(0xFFE8F4FD),
                           ),
                           const SizedBox(width: 10),
                           Expanded(
@@ -1242,17 +1223,11 @@ class _CommunityUserProfileScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            Container(
-              width: 78,
-              height: 78,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFF4F4F4F), width: 2),
-                color: Colors.white.withValues(alpha: 0.7),
-              ),
-              child: Center(
-                child: Text(avatar, style: const TextStyle(fontSize: 30)),
-              ),
+            MascotProfileAvatar(
+              size: 78,
+              backgroundColor: Colors.white.withValues(alpha: 0.7),
+              borderColor: const Color(0xFF4F4F4F),
+              borderWidth: 2,
             ),
             const SizedBox(height: 14),
             Text(

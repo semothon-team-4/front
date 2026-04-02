@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import '../widgets/mascot_profile_avatar.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -248,29 +249,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   onTap: _pickProfileImage,
                   child: Stack(
                     children: [
-                      Container(
-                        width: 80,
-                        height: 80,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFDBF4F9),
-                          shape: BoxShape.circle,
-                        ),
-                        child: _profileImage != null
-                            ? ClipOval(
-                                child: Image.file(
-                                  _profileImage!,
-                                  fit: BoxFit.cover,
-                                ),
-                              )
-                            : ClipOval(
-                                child: Image.asset(
-                                  'assets/images/profile_default.png',
-                                  fit: BoxFit.cover,
-                                  width: 80,
-                                  height: 80,
-                                ),
-                              ),
-                      ),
+                      MascotProfileAvatar(size: 80, imageFile: _profileImage),
                       Positioned(
                         right: 0,
                         bottom: 0,
