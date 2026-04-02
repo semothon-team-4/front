@@ -262,10 +262,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   fit: BoxFit.cover,
                                 ),
                               )
-                            : const Icon(
-                                Icons.person_outline,
-                                size: 44,
-                                color: Color(0xFF1D1B20),
+                            : ClipOval(
+                                child: Image.asset(
+                                  'assets/images/profile_default.png',
+                                  fit: BoxFit.cover,
+                                  width: 80,
+                                  height: 80,
+                                ),
                               ),
                       ),
                       Positioned(

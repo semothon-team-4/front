@@ -103,15 +103,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
               ),
               SizedBox(height: screenWidth * 0.04),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: ClothesUpLogo(width: screenWidth * 0.48),
+              Center(
+                child: ClothesUpLogo(width: screenWidth * 0.36),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 10),
               const Center(
                 child: SealMascot(
                   size: 92,
                   helpText: '반가워요!\n회원가입하고 클로즈업을 시작해보세요.',
+                  imagePath: 'assets/images/profile_default.png',
                 ),
               ),
               const SizedBox(height: 22),
@@ -133,6 +133,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
               ),
               const SizedBox(height: 32),
+              const _FieldLabel('아이디'),
+              const SizedBox(height: 8),
+              _SignUpField(controller: _idCtrl, hint: 'minju kim'),
+              const SizedBox(height: 18),
               const _FieldLabel('이메일'),
               const SizedBox(height: 8),
               _SignUpField(
@@ -140,10 +144,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 hint: 'email address',
                 keyboardType: TextInputType.emailAddress,
               ),
-              const SizedBox(height: 18),
-              const _FieldLabel('아이디'),
-              const SizedBox(height: 8),
-              _SignUpField(controller: _idCtrl, hint: 'minju kim'),
               const SizedBox(height: 18),
               const _FieldLabel('비밀번호'),
               const SizedBox(height: 8),

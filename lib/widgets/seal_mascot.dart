@@ -3,8 +3,14 @@ import 'package:flutter/material.dart';
 class SealMascot extends StatefulWidget {
   final String helpText;
   final double size;
+  final String imagePath;
 
-  const SealMascot({super.key, required this.helpText, this.size = 120});
+  const SealMascot({
+    super.key,
+    required this.helpText,
+    this.size = 120,
+    this.imagePath = 'assets/images/mascot.png',
+  });
 
   @override
   State<SealMascot> createState() => _SealMascotState();
@@ -105,7 +111,7 @@ class _SealMascotState extends State<SealMascot>
               child: Transform.scale(
                 scale: 2.2,
                 child: Image.asset(
-                  'assets/images/mascot.png',
+                  widget.imagePath,
                   fit: BoxFit.contain,
                 ),
               ),
