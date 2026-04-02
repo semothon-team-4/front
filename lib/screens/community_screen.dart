@@ -925,19 +925,9 @@ class _PostDetailScreenState extends State<_PostDetailScreen> {
                     children: [
                       GestureDetector(
                         onTap: _openUserProfile,
-                        child: Container(
-                          width: 42,
-                          height: 42,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFE8F4FD),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: Text(
-                              widget.post['avatar'],
-                              style: const TextStyle(fontSize: 20),
-                            ),
-                          ),
+                        child: const MascotProfileAvatar(
+                          size: 42,
+                          backgroundColor: Color(0xFFE8F4FD),
                         ),
                       ),
                       const SizedBox(width: 10),
