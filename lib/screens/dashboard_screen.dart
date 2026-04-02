@@ -958,19 +958,19 @@ class _ProfileQuickView extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: const [
                     _ProfileMenuIcon(
-                      icon: Icons.favorite_border,
+                      icon: Icons.favorite_outline,
                       label: '찜 매장',
                     ),
                     _ProfileMenuIcon(
-                      icon: Icons.rate_review_outlined,
+                      icon: Icons.chat_bubble_outline,
                       label: '리뷰 내역',
                     ),
                     _ProfileMenuIcon(
-                      icon: Icons.bookmark_border,
+                      icon: Icons.bookmark_outline,
                       label: '저장 매장',
                     ),
                     _ProfileMenuIcon(
-                      icon: Icons.history_outlined,
+                      icon: Icons.article_outlined,
                       label: '최근 본 글',
                     ),
                   ],

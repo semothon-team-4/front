@@ -18,7 +18,7 @@ class _MapScreenState extends State<MapScreen> {
   bool _showOnlyLiked = false;
   final _searchCtrl = TextEditingController();
   final _sheetController = DraggableScrollableController();
-  double _sheetExtent = 0.35; // 초기 크기
+  final double _sheetExtent = 0.35; // 초기 크기
 
   @override
   void initState() {
@@ -421,7 +421,7 @@ class _MapScreenState extends State<MapScreen> {
                         controller: scrollController,
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         itemCount: sorted.length,
-                        separatorBuilder: (_, __) => const Divider(height: 32, color: Color(0xFFEEEEEE)),
+                        separatorBuilder: (_, _) => const Divider(height: 32, color: Color(0xFFEEEEEE)),
                         itemBuilder: (context, i) => _BusinessCard(
                           business: sorted[i],
                           onLike: () => _toggleLike(sorted[i]['name'] as String),
