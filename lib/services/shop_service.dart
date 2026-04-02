@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:http/http.dart' as http;
 
@@ -11,8 +12,16 @@ class ShopService {
     required double lng,
     int radius = 1000,
   }) async {
+    final latDelta = radius / 111000;
+    final lngDelta = radius / (111000 * cos(lat * pi / 180)).abs();
+    final swLat = lat - latDelta;
+    final swLng = lng - lngDelta;
+    final neLat = lat + latDelta;
+    final neLng = lng + lngDelta;
+
     final uri = Uri.parse(
-      '${ApiConfig.baseUrl}/shops?lat=$lat&lng=$lng&radius=$radius',
+      '${ApiConfig.baseUrl}/shops/map'
+      '?swLat=$swLat&swLng=$swLng&neLat=$neLat&neLng=$neLng&lat=$lat&lng=$lng',
     );
     final response = await http.get(
       uri,
@@ -33,6 +42,7 @@ class ShopService {
         'placeId': map['placeId'],
         'name': map['name'] ?? '',
         'address': map['address'] ?? '',
+        'imageUrl': map['imageUrl'] ?? map['imagePath'] ?? '',
         'lat': (map['lat'] as num?)?.toDouble() ?? lat,
         'lng': (map['lng'] as num?)?.toDouble() ?? lng,
       };

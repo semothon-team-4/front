@@ -15,7 +15,7 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> {
   int _selectedType = 0; // 0=전체, 1=세탁소, 2=수선집
-  int _sortMode = 0;     // 0=거리순, 1=인기순, 2=평점순
+  int _sortMode = 0; // 0=거리순, 1=인기순, 2=평점순
   Map<String, dynamic>? _selectedBusiness; // 선택된 가게
   String _searchQuery = '';
   bool _showOnlyLiked = false;
@@ -28,6 +28,7 @@ class _MapScreenState extends State<MapScreen> {
   double _currentCenterLat = _fixedLat;
   double _currentCenterLng = _fixedLng;
   int _shopRequestId = 0;
+  bool _suppressNextCameraIdle = false;
 
   @override
   void initState() {
@@ -44,7 +45,7 @@ class _MapScreenState extends State<MapScreen> {
     _compactSheetCtrl.dispose();
     super.dispose();
   }
- 
+
   // 경희대학교 국제캠퍼스 / 영통역 기준 고정 좌표
   static const _fixedLat = 37.2430;
   static const _fixedLng = 127.0760;
@@ -56,8 +57,8 @@ class _MapScreenState extends State<MapScreen> {
     var list = _selectedType == 0
         ? List<Map<String, dynamic>>.from(_businesses)
         : _businesses
-            .where((b) => b['type'] == (_selectedType == 1 ? '세탁소' : '수선집'))
-            .toList();
+              .where((b) => b['type'] == (_selectedType == 1 ? '세탁소' : '수선집'))
+              .toList();
     // 좋아요 필터
     if (_showOnlyLiked) {
       list = list.where((b) => b['isLiked'] == true).toList();
@@ -65,21 +66,28 @@ class _MapScreenState extends State<MapScreen> {
     // 검색어 필터
     if (_searchQuery.isNotEmpty) {
       final q = _searchQuery.toLowerCase();
-      list = list.where((b) =>
-        (b['name'] as String).toLowerCase().contains(q) ||
-        (b['address'] as String).toLowerCase().contains(q) ||
-        (b['tags'] as List).any((t) => t.toString().toLowerCase().contains(q))
-      ).toList();
+      list = list
+          .where(
+            (b) =>
+                (b['name'] as String).toLowerCase().contains(q) ||
+                (b['address'] as String).toLowerCase().contains(q) ||
+                (b['tags'] as List).any(
+                  (t) => t.toString().toLowerCase().contains(q),
+                ),
+          )
+          .toList();
     }
     switch (_sortMode) {
       case 1: // 인기순
         list.sort((a, b) => (b['likes'] as int).compareTo(a['likes'] as int));
       case 2: // 평점순
-        list.sort((a, b) =>
-            (b['rating'] as double).compareTo(a['rating'] as double));
+        list.sort(
+          (a, b) => (b['rating'] as double).compareTo(a['rating'] as double),
+        );
       default: // 거리순
-        list.sort((a, b) =>
-            (a['distanceM'] as int).compareTo(b['distanceM'] as int));
+        list.sort(
+          (a, b) => (a['distanceM'] as int).compareTo(b['distanceM'] as int),
+        );
     }
     return list;
   }
@@ -93,17 +101,21 @@ class _MapScreenState extends State<MapScreen> {
     });
   }
 
-  void _onBusinessSelected(Map<String, dynamic> business) {
+  Future<void> _onBusinessSelected(Map<String, dynamic> business) async {
     setState(() {
       _selectedBusiness = business;
       _compactSheetExtent = 0.35; // 상태 즉시 초기화
     });
+    await _refreshMapMarkers();
+    _suppressNextCameraIdle = true;
 
     // 지도 카메라 이동
-    _mapController?.updateCamera(NCameraUpdate.withParams(
-      target: NLatLng(business['lat'] as double, business['lng'] as double),
-      zoom: 16,
-    ));
+    await _mapController?.updateCamera(
+      NCameraUpdate.withParams(
+        target: NLatLng(business['lat'] as double, business['lng'] as double),
+        zoom: 16,
+      ),
+    );
 
     // 다음 프레임에서 시트 컨트롤러 위치 초기화
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -127,10 +139,7 @@ class _MapScreenState extends State<MapScreen> {
     }
 
     try {
-      final shops = await ShopService.fetchNearbyShops(
-        lat: lat,
-        lng: lng,
-      );
+      final shops = await ShopService.fetchNearbyShops(lat: lat, lng: lng);
 
       if (requestId != _shopRequestId) return;
 
@@ -157,6 +166,7 @@ class _MapScreenState extends State<MapScreen> {
           'distance': _formatDistance(distanceM),
           'distanceM': distanceM,
           'address': shop['address'] ?? '',
+          'imageUrl': shop['imageUrl'] ?? '',
           'tags': <String>[],
           'isOpen': true,
           'hours': '영업 정보 없음',
@@ -180,11 +190,7 @@ class _MapScreenState extends State<MapScreen> {
     } catch (e) {
       if (!mounted || requestId != _shopRequestId) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            e.toString().replaceFirst('Exception: ', ''),
-          ),
-        ),
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
       );
     } finally {
       if (mounted && requestId == _shopRequestId) {
@@ -219,12 +225,16 @@ class _MapScreenState extends State<MapScreen> {
       if (!mounted) return;
       final isLaundry = business['type'] == '세탁소';
       final isVerified = business['isVerified'] ?? false;
+      final isSelected =
+          _selectedBusiness?['name'] != null &&
+          _selectedBusiness!['name'] == business['name'];
       final icon = await NOverlayImage.fromWidget(
         context: context,
-        size: const Size(46, 46),
+        size: Size(isSelected ? 58 : 46, isSelected ? 72 : 46),
         widget: _BusinessMarkerIcon(
           isLaundry: isLaundry,
           isVerified: isVerified,
+          isSelected: isSelected,
         ),
       );
       if (!mounted) return;
@@ -243,6 +253,11 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _handleCameraIdle() async {
+    if (_suppressNextCameraIdle) {
+      _suppressNextCameraIdle = false;
+      return;
+    }
+
     final controller = _mapController;
     if (controller == null) return;
 
@@ -257,10 +272,7 @@ class _MapScreenState extends State<MapScreen> {
 
     if (movedDistance < 30) return;
 
-    await _loadNearbyShops(
-      lat: target.latitude,
-      lng: target.longitude,
-    );
+    await _loadNearbyShops(lat: target.latitude, lng: target.longitude);
   }
 
   String _inferType(String name) {
@@ -305,9 +317,7 @@ class _MapScreenState extends State<MapScreen> {
         children: [
           if (_isLoadingShops)
             const Center(
-              child: CircularProgressIndicator(
-                color: Color(0xFF1A39FF),
-              ),
+              child: CircularProgressIndicator(color: Color(0xFF1A39FF)),
             ),
           // ── 네이버 지도 ────────────────────────────────────
           NaverMap(
@@ -321,10 +331,12 @@ class _MapScreenState extends State<MapScreen> {
             ),
             onMapReady: (controller) async {
               _mapController = controller;
-              await controller.updateCamera(NCameraUpdate.withParams(
-                target: const NLatLng(_fixedLat, _fixedLng),
-                zoom: 15,
-              ));
+              await controller.updateCamera(
+                NCameraUpdate.withParams(
+                  target: const NLatLng(_fixedLat, _fixedLng),
+                  zoom: 15,
+                ),
+              );
               await _loadNearbyShops(lat: _fixedLat, lng: _fixedLng);
             },
             onCameraIdle: _handleCameraIdle,
@@ -358,10 +370,13 @@ class _MapScreenState extends State<MapScreen> {
           // ── 상단 검색바 ────────────────────────────────────
           Positioned(
             top: MediaQuery.of(context).padding.top + 12,
-            left: 16, right: 16,
+            left: 16,
+            right: 16,
             child: AnimatedOpacity(
               duration: const Duration(milliseconds: 200),
-              opacity: _selectedBusiness == null ? 1.0 : (_compactSheetExtent > 0.8 ? 0.0 : 1.0),
+              opacity: _selectedBusiness == null
+                  ? 1.0
+                  : (_compactSheetExtent > 0.8 ? 0.0 : 1.0),
               child: Container(
                 height: 52,
                 decoration: BoxDecoration(
@@ -386,15 +401,25 @@ class _MapScreenState extends State<MapScreen> {
                         onChanged: (v) => setState(() => _searchQuery = v),
                         decoration: const InputDecoration(
                           hintText: '세탁소, 수선집 검색',
-                          hintStyle: TextStyle(fontSize: 15, color: Color(0xFF9E9E9E)),
+                          hintStyle: TextStyle(
+                            fontSize: 15,
+                            color: Color(0xFF9E9E9E),
+                          ),
                           border: InputBorder.none,
                           focusedBorder: InputBorder.none,
                           enabledBorder: InputBorder.none,
                         ),
-                        style: const TextStyle(fontSize: 15, color: Color(0xFF1D1B20)),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          color: Color(0xFF1D1B20),
+                        ),
                       ),
                     ),
-                    const Icon(Icons.search, color: Color(0xFF1D1B20), size: 24),
+                    const Icon(
+                      Icons.search,
+                      color: Color(0xFF1D1B20),
+                      size: 24,
+                    ),
                     const SizedBox(width: 16),
                   ],
                 ),
@@ -416,7 +441,10 @@ class _MapScreenState extends State<MapScreen> {
                 scrollCtrl: scrollCtrl,
                 compactSheetCtrl: _compactSheetCtrl,
                 currentExtent: _compactSheetExtent,
-                onClose: () => setState(() => _selectedBusiness = null),
+                onClose: () async {
+                  setState(() => _selectedBusiness = null);
+                  await _refreshMapMarkers();
+                },
                 onLike: () => _toggleLike(_selectedBusiness!['name'] as String),
                 onWriteReview: () => Navigator.push(
                   context,
@@ -432,125 +460,163 @@ class _MapScreenState extends State<MapScreen> {
 
           // ── 하단 드래그 시트 (가게 선택 시 숨김) ──────────
           if (_selectedBusiness == null)
-          DraggableScrollableSheet(
-            controller: _sheetCtrl,
-            initialChildSize: 0.35,
-            minChildSize: 0.12,
-            maxChildSize: 0.75,
-            builder: (context, scrollController) {
-              return Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius:
-                      BorderRadius.vertical(top: Radius.circular(20)),
-                  boxShadow: [
-                    BoxShadow(
+            DraggableScrollableSheet(
+              controller: _sheetCtrl,
+              initialChildSize: 0.35,
+              minChildSize: 0.12,
+              maxChildSize: 0.75,
+              builder: (context, scrollController) {
+                return Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(20),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
                         color: Color(0x1A000000),
                         blurRadius: 16,
-                        offset: Offset(0, -4)),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    // GestureDetector를 통해 헤더 영역 드래그 시 시트 조절 가능하게 수정
-                    GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onVerticalDragUpdate: (details) {
-                        final delta = details.primaryDelta ?? 0;
-                        final screenH = MediaQuery.of(context).size.height;
-                        final newExtent = (_sheetCtrl.size - (delta / screenH)).clamp(0.12, 0.75);
-                        _sheetCtrl.jumpTo(newExtent);
-                      },
-                      child: Column(
-                        children: [
-                          // 핸들
-                          Container(
-                            margin: const EdgeInsets.symmetric(vertical: 10),
-                            width: 36,
-                            height: 4,
-                            decoration: BoxDecoration(
+                        offset: Offset(0, -4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      // GestureDetector를 통해 헤더 영역 드래그 시 시트 조절 가능하게 수정
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onVerticalDragUpdate: (details) {
+                          final delta = details.primaryDelta ?? 0;
+                          final screenH = MediaQuery.of(context).size.height;
+                          final newExtent =
+                              (_sheetCtrl.size - (delta / screenH)).clamp(
+                                0.12,
+                                0.75,
+                              );
+                          _sheetCtrl.jumpTo(newExtent);
+                        },
+                        child: Column(
+                          children: [
+                            // 핸들
+                            Container(
+                              margin: const EdgeInsets.symmetric(vertical: 10),
+                              width: 36,
+                              height: 4,
+                              decoration: BoxDecoration(
                                 color: const Color(0xFFE0E0E0),
-                                borderRadius: BorderRadius.circular(2)),
-                          ),
-                          // 헤더 행 (개수 + 등록 + 정렬)
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                            child: Row(
-                              children: [
-                                _SortChip(
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                            // 헤더 행 (개수 + 등록 + 정렬)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                              child: Row(
+                                children: [
+                                  _SortChip(
                                     label: '거리순',
                                     selected: _sortMode == 0,
-                                    onTap: () => setState(() => _sortMode = 0)),
-                                const SizedBox(width: 8),
-                                _SortChip(
+                                    onTap: () => setState(() => _sortMode = 0),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _SortChip(
                                     label: '인기순',
                                     selected: _sortMode == 1,
-                                    onTap: () => setState(() => _sortMode = 1)),
-                                const SizedBox(width: 8),
-                                _SortChip(
+                                    onTap: () => setState(() => _sortMode = 1),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _SortChip(
                                     label: '평점순',
                                     selected: _sortMode == 2,
-                                    onTap: () => setState(() => _sortMode = 2)),
-                                const SizedBox(width: 8),
-                                _HeartChip(
-                                    selected: _showOnlyLiked,
-                                    onTap: () => setState(() => _showOnlyLiked = !_showOnlyLiked)),
-                                const Spacer(),
-                                // 드롭다운
-                                DropdownButtonHideUnderline(
-                                  child: DropdownButton<int>(
-                                    value: _selectedType,
-                                    icon: const Icon(Icons.arrow_drop_down, color: Colors.black),
-                                    onChanged: (v) => setState(() => _selectedType = v!),
-                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black),
-                                    items: const [
-                                      DropdownMenuItem(value: 0, child: Text('전체')),
-                                      DropdownMenuItem(value: 1, child: Text('세탁소')),
-                                      DropdownMenuItem(value: 2, child: Text('수선집')),
-                                    ],
+                                    onTap: () => setState(() => _sortMode = 2),
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(width: 8),
+                                  _HeartChip(
+                                    selected: _showOnlyLiked,
+                                    onTap: () => setState(
+                                      () => _showOnlyLiked = !_showOnlyLiked,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  // 드롭다운
+                                  DropdownButtonHideUnderline(
+                                    child: DropdownButton<int>(
+                                      value: _selectedType,
+                                      icon: const Icon(
+                                        Icons.arrow_drop_down,
+                                        color: Colors.black,
+                                      ),
+                                      onChanged: (v) =>
+                                          setState(() => _selectedType = v!),
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black,
+                                      ),
+                                      items: const [
+                                        DropdownMenuItem(
+                                          value: 0,
+                                          child: Text('전체'),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: 1,
+                                          child: Text('세탁소'),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: 2,
+                                          child: Text('수선집'),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Divider(height: 1, color: Color(0xFFEEEEEE)),
-                    // 업체 리스트
-                    Expanded(
-                      child: ListView.separated(
-                        controller: scrollController,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        itemCount: sorted.length,
-                        separatorBuilder: (_, index) => const Divider(height: 32, color: Color(0xFFEEEEEE)),
-                        itemBuilder: (context, i) => _BusinessCard(
-                          business: sorted[i],
-                          onLike: () => _toggleLike(sorted[i]['name'] as String),
-                          onTap: () => _onBusinessSelected(sorted[i]),
+                          ],
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
+                      const Divider(height: 1, color: Color(0xFFEEEEEE)),
+                      // 업체 리스트
+                      Expanded(
+                        child: ListView.separated(
+                          controller: scrollController,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          itemCount: sorted.length,
+                          separatorBuilder: (_, index) => const Divider(
+                            height: 32,
+                            color: Color(0xFFEEEEEE),
+                          ),
+                          itemBuilder: (context, i) => _BusinessCard(
+                            business: sorted[i],
+                            onLike: () =>
+                                _toggleLike(sorted[i]['name'] as String),
+                            onTap: () => _onBusinessSelected(sorted[i]),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
         ],
       ),
     );
   }
-
 }
-
-
 
 // ─── 정렬 칩 ──────────────────────────────────────────────────
 class _SortChip extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
-  const _SortChip({required this.label, required this.selected, required this.onTap});
+  const _SortChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -559,15 +625,22 @@ class _SortChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFF8FEAFD).withValues(alpha: 0.5) : Colors.white,
+          color: selected
+              ? const Color(0xFF8FEAFD).withValues(alpha: 0.5)
+              : Colors.white,
           borderRadius: BorderRadius.circular(100),
-          border: Border.all(color: selected ? const Color(0xFF8FEAFD) : const Color(0xFFE0E0E0)),
+          border: Border.all(
+            color: selected ? const Color(0xFF8FEAFD) : const Color(0xFFE0E0E0),
+          ),
         ),
-        child: Text(label,
-            style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: selected ? const Color(0xFF1A39FF) : const Color(0xFF9E9E9E))),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: selected ? const Color(0xFF1A39FF) : const Color(0xFF9E9E9E),
+          ),
+        ),
       ),
     );
   }
@@ -587,9 +660,15 @@ class _HeartChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? Colors.red.withValues(alpha: 0.1) : Colors.white,
           borderRadius: BorderRadius.circular(100),
-          border: Border.all(color: selected ? Colors.red : const Color(0xFFE0E0E0)),
+          border: Border.all(
+            color: selected ? Colors.red : const Color(0xFFE0E0E0),
+          ),
         ),
-        child: Icon(Icons.favorite, size: 16, color: selected ? Colors.red : const Color(0xFFE0E0E0)),
+        child: Icon(
+          Icons.favorite,
+          size: 16,
+          color: selected ? Colors.red : const Color(0xFFE0E0E0),
+        ),
       ),
     );
   }
@@ -600,7 +679,11 @@ class _BusinessCard extends StatelessWidget {
   final Map<String, dynamic> business;
   final VoidCallback onLike;
   final VoidCallback onTap;
-  const _BusinessCard({required this.business, required this.onLike, required this.onTap});
+  const _BusinessCard({
+    required this.business,
+    required this.onLike,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -618,11 +701,11 @@ class _BusinessCard extends StatelessWidget {
             // 이미지 또는 아이콘
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: Container(
-                width: 72, height: 72,
-                color: const Color(0xFF1A39FF),
-                child: const Center(
-                  child: Icon(Icons.cloud, color: Colors.white, size: 36),
+              child: SizedBox(
+                width: 72,
+                height: 72,
+                child: _BusinessThumbnail(
+                  imageUrl: business['imageUrl'] as String?,
                 ),
               ),
             ),
@@ -634,27 +717,62 @@ class _BusinessCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Text(business['name'] as String,
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1D1B20))),
+                      Text(
+                        business['name'] as String,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1D1B20),
+                        ),
+                      ),
                       if (isVerified) ...[
                         const SizedBox(width: 6),
-                        const Icon(Icons.check_circle, size: 16, color: Color(0xFF8BC34A)),
+                        const Icon(
+                          Icons.check_circle,
+                          size: 16,
+                          color: Color(0xFF8BC34A),
+                        ),
                       ],
                     ],
                   ),
                   const SizedBox(height: 2),
-                  Text(business['hours'] as String,
-                      style: const TextStyle(fontSize: 13, color: Color(0xFF1D1B20))),
+                  Text(
+                    business['hours'] as String,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF1D1B20),
+                    ),
+                  ),
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      Icon(Icons.favorite, size: 14, color: Colors.red.withValues(alpha: 0.6)),
+                      Icon(
+                        Icons.favorite,
+                        size: 14,
+                        color: Colors.red.withValues(alpha: 0.6),
+                      ),
                       const SizedBox(width: 4),
-                      Text('$likes', style: const TextStyle(fontSize: 13, color: Color(0xFF757575))),
+                      Text(
+                        '$likes',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF757575),
+                        ),
+                      ),
                       const SizedBox(width: 12),
-                      const Icon(Icons.star, size: 14, color: Color(0xFFFFC107)),
+                      const Icon(
+                        Icons.star,
+                        size: 14,
+                        color: Color(0xFFFFC107),
+                      ),
                       const SizedBox(width: 4),
-                      Text('$rating', style: const TextStyle(fontSize: 13, color: Color(0xFF757575))),
+                      Text(
+                        '$rating',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF757575),
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -662,6 +780,60 @@ class _BusinessCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _BusinessThumbnail extends StatelessWidget {
+  final String? imageUrl;
+
+  const _BusinessThumbnail({this.imageUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    final url = imageUrl?.trim() ?? '';
+    if (url.isEmpty) {
+      return _BusinessThumbnailFallback();
+    }
+
+    return Image.network(
+      url,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) =>
+          const _BusinessThumbnailFallback(),
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Stack(
+          fit: StackFit.expand,
+          children: const [
+            _BusinessThumbnailFallback(),
+            Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _BusinessThumbnailFallback extends StatelessWidget {
+  const _BusinessThumbnailFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: const Color(0xFF1A39FF),
+      child: const Center(
+        child: Icon(Icons.cloud, color: Colors.white, size: 36),
       ),
     );
   }
@@ -712,41 +884,87 @@ class _MyLocationDot extends StatelessWidget {
 class _BusinessMarkerIcon extends StatelessWidget {
   final bool isLaundry;
   final bool isVerified;
-  const _BusinessMarkerIcon({required this.isLaundry, required this.isVerified});
+  final bool isSelected;
+  const _BusinessMarkerIcon({
+    required this.isLaundry,
+    required this.isVerified,
+    this.isSelected = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Container(
-          width: 46,
-          height: 46,
-          decoration: BoxDecoration(
-            color: const Color(0xFF00E5FF),
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 2.5),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.2),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
+    final markerColor = isSelected
+        ? const Color(0xFF1A39FF)
+        : const Color(0xFF00E5FF);
+
+    return SizedBox(
+      width: isSelected ? 58 : 46,
+      height: isSelected ? 72 : 46,
+      child: Stack(
+        alignment: Alignment.topCenter,
+        children: [
+          if (isSelected)
+            Positioned(
+              top: 50,
+              child: Container(
+                width: 14,
+                height: 14,
+                decoration: BoxDecoration(
+                  color: markerColor,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.16),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
               ),
-            ],
-          ),
-          child: const Center(
-            child: Icon(Icons.local_laundry_service, color: Colors.white, size: 24),
-          ),
-        ),
-        if (isVerified)
-          Positioned(
-            right: 0, bottom: 0,
-            child: Container(
-              padding: const EdgeInsets.all(2),
-              decoration: const BoxDecoration(color: Color(0xFF8BC34A), shape: BoxShape.circle),
-              child: const Icon(Icons.check, color: Colors.white, size: 12),
+            ),
+          Container(
+            width: isSelected ? 58 : 46,
+            height: isSelected ? 58 : 46,
+            decoration: BoxDecoration(
+              color: markerColor,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white,
+                width: isSelected ? 3 : 2.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(
+                    alpha: isSelected ? 0.28 : 0.2,
+                  ),
+                  blurRadius: isSelected ? 8 : 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Center(
+              child: Icon(
+                isLaundry ? Icons.local_laundry_service : Icons.content_cut,
+                color: Colors.white,
+                size: isSelected ? 28 : 24,
+              ),
             ),
           ),
-      ],
+          if (isVerified)
+            Positioned(
+              right: isSelected ? 2 : 0,
+              bottom: isSelected ? 16 : 0,
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF8BC34A),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.check, color: Colors.white, size: 12),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -758,10 +976,19 @@ class _FloatingMapButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 44, height: 44,
-      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [
-        BoxShadow(color: Color(0x1A000000), blurRadius: 8, offset: Offset(0, 2)),
-      ]),
+      width: 44,
+      height: 44,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x1A000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
       child: Icon(icon, color: Colors.black54, size: 22),
     );
   }
@@ -826,15 +1053,22 @@ class _BusinessCompactCard extends StatelessWidget {
               onVerticalDragUpdate: (details) {
                 final delta = details.primaryDelta ?? 0;
                 final screenH = MediaQuery.of(context).size.height;
-                final newExtent = (currentExtent - (delta / screenH)).clamp(0.12, 1.0);
+                final newExtent = (currentExtent - (delta / screenH)).clamp(
+                  0.12,
+                  1.0,
+                );
                 compactSheetCtrl.jumpTo(newExtent);
               },
               onVerticalDragEnd: (details) {
                 // 상하 3단계 스냅 지점 중 가장 가까운 곳으로 애니메이션
                 const snapSizes = [0.12, 0.35, 1.0];
-                double closest = snapSizes.reduce((a, b) =>
-                    (a - currentExtent).abs() < (b - currentExtent).abs() ? a : b);
-                
+                double closest = snapSizes.reduce(
+                  (a, b) =>
+                      (a - currentExtent).abs() < (b - currentExtent).abs()
+                      ? a
+                      : b,
+                );
+
                 compactSheetCtrl.animateTo(
                   closest,
                   duration: const Duration(milliseconds: 200),
@@ -849,12 +1083,13 @@ class _BusinessCompactCard extends StatelessWidget {
                   width: 36,
                   height: 4,
                   decoration: BoxDecoration(
-                      color: const Color(0xFFE0E0E0),
-                      borderRadius: BorderRadius.circular(2)),
+                    color: const Color(0xFFE0E0E0),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
             ),
-          
+
           Expanded(
             child: ListView(
               controller: scrollCtrl,
@@ -868,16 +1103,22 @@ class _BusinessCompactCard extends StatelessWidget {
                       child: Row(
                         children: [
                           Flexible(
-                            child: Text(name,
-                                style: TextStyle(
-                                    fontSize: isCollapsed ? 18 : 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: const Color(0xFF1D1B20)),
-                                overflow: TextOverflow.ellipsis),
+                            child: Text(
+                              name,
+                              style: TextStyle(
+                                fontSize: isCollapsed ? 18 : 20,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF1D1B20),
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                           const SizedBox(width: 6),
-                          const Icon(Icons.check_circle,
-                              size: 18, color: Color(0xFF43A047)),
+                          const Icon(
+                            Icons.check_circle,
+                            size: 18,
+                            color: Color(0xFF43A047),
+                          ),
                         ],
                       ),
                     ),
@@ -888,7 +1129,9 @@ class _BusinessCompactCard extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(horizontal: 8),
                           child: Icon(
                             isLiked ? Icons.favorite : Icons.favorite_border,
-                            color: isLiked ? Colors.red : const Color(0xFFBDBDBD),
+                            color: isLiked
+                                ? Colors.red
+                                : const Color(0xFFBDBDBD),
                             size: 24,
                           ),
                         ),
@@ -897,8 +1140,11 @@ class _BusinessCompactCard extends StatelessWidget {
                         onTap: onClose,
                         child: const Padding(
                           padding: EdgeInsets.only(left: 4),
-                          child: Icon(Icons.close,
-                              size: 24, color: Color(0xFF9E9E9E)),
+                          child: Icon(
+                            Icons.close,
+                            size: 24,
+                            color: Color(0xFF9E9E9E),
+                          ),
                         ),
                       ),
                     ],
@@ -908,41 +1154,61 @@ class _BusinessCompactCard extends StatelessWidget {
                 // ── 타입 · 리뷰 · 평점 · 좋아요 ──
                 Row(
                   children: [
-                    Text(type,
-                        style: const TextStyle(
-                            fontSize: 13, color: Color(0xFF9E9E9E))),
+                    Text(
+                      type,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF9E9E9E),
+                      ),
+                    ),
                     const _Dot(),
-                    Text('리뷰 $reviews',
-                        style: const TextStyle(
-                            fontSize: 13, color: Color(0xFF9E9E9E))),
+                    Text(
+                      '리뷰 $reviews',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF9E9E9E),
+                      ),
+                    ),
                     const SizedBox(width: 4),
                     const Icon(Icons.star, size: 14, color: Color(0xFFFFB300)),
-                    Text(' $rating',
-                        style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF1D1B20))),
+                    Text(
+                      ' $rating',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1D1B20),
+                      ),
+                    ),
                     const SizedBox(width: 6),
                     const Icon(Icons.favorite, size: 14, color: Colors.red),
-                    Text(' $likes',
-                        style: const TextStyle(
-                            fontSize: 13, color: Color(0xFF9E9E9E))),
+                    Text(
+                      ' $likes',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF9E9E9E),
+                      ),
+                    ),
                     if (isCollapsed) const Spacer(),
                     if (isCollapsed)
                       GestureDetector(
                         onTap: onClose,
-                        child: const Icon(Icons.close, size: 20, color: Color(0xFF9E9E9E)),
+                        child: const Icon(
+                          Icons.close,
+                          size: 20,
+                          color: Color(0xFF9E9E9E),
+                        ),
                       ),
                   ],
                 ),
-                
+
                 if (!isCollapsed) ...[
                   const SizedBox(height: 12),
                   // ── 영업 · 시간 ──
                   Row(
                     children: [
                       Container(
-                        width: 6, height: 6,
+                        width: 6,
+                        height: 6,
                         decoration: BoxDecoration(
                           color: isOpen
                               ? const Color(0xFF43A047)
@@ -954,31 +1220,44 @@ class _BusinessCompactCard extends StatelessWidget {
                       Text(
                         isOpen ? '영업중' : '영업종료',
                         style: TextStyle(
-                            fontSize: 13,
-                            color: isOpen
-                                ? const Color(0xFF43A047)
-                                : const Color(0xFFEF5350),
-                            fontWeight: FontWeight.w600),
+                          fontSize: 13,
+                          color: isOpen
+                              ? const Color(0xFF43A047)
+                              : const Color(0xFFEF5350),
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       const _Dot(),
-                      Text('$hours 영업',
-                          style: const TextStyle(
-                              fontSize: 13, color: Color(0xFF9E9E9E))),
+                      Text(
+                        '$hours 영업',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF9E9E9E),
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 6),
                   // ── 거리 · 주소 ──
                   Row(
                     children: [
-                      Text(distance,
-                          style: const TextStyle(
-                              fontSize: 13, color: Color(0xFF9E9E9E))),
+                      Text(
+                        distance,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF9E9E9E),
+                        ),
+                      ),
                       const _Dot(),
                       Expanded(
-                        child: Text(address,
-                            style: const TextStyle(
-                                fontSize: 13, color: Color(0xFF9E9E9E)),
-                            overflow: TextOverflow.ellipsis),
+                        child: Text(
+                          address,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF9E9E9E),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),
@@ -987,26 +1266,34 @@ class _BusinessCompactCard extends StatelessWidget {
                   Row(
                     children: [
                       Container(
-                        width: 80, height: 64,
+                        width: 80,
+                        height: 64,
                         decoration: BoxDecoration(
                           color: const Color(0xFF1A39FF),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: const Center(
-                          child: Icon(Icons.local_laundry_service,
-                              color: Colors.white, size: 32),
+                          child: Icon(
+                            Icons.local_laundry_service,
+                            color: Colors.white,
+                            size: 32,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
                       Container(
-                        width: 80, height: 64,
+                        width: 80,
+                        height: 64,
                         decoration: BoxDecoration(
                           color: const Color(0xFFE0E0E0),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: const Center(
-                          child: Icon(Icons.image_outlined,
-                              color: Color(0xFF9E9E9E), size: 28),
+                          child: Icon(
+                            Icons.image_outlined,
+                            color: Color(0xFF9E9E9E),
+                            size: 28,
+                          ),
                         ),
                       ),
                       const Spacer(),
@@ -1017,7 +1304,9 @@ class _BusinessCompactCard extends StatelessWidget {
                             onTap: onWriteReview,
                             child: Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 6),
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF8FEAFD),
                                 borderRadius: BorderRadius.circular(16),
@@ -1025,13 +1314,20 @@ class _BusinessCompactCard extends StatelessWidget {
                               child: const Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.add, size: 13, color: Color(0xFF1D1B20)),
+                                  Icon(
+                                    Icons.add,
+                                    size: 13,
+                                    color: Color(0xFF1D1B20),
+                                  ),
                                   SizedBox(width: 3),
-                                  Text('리뷰 쓰기',
-                                      style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                          color: Color(0xFF1D1B20))),
+                                  Text(
+                                    '리뷰 쓰기',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF1D1B20),
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -1041,7 +1337,9 @@ class _BusinessCompactCard extends StatelessWidget {
                             onTap: onCommunity,
                             child: Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 6),
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF8FEAFD),
                                 borderRadius: BorderRadius.circular(16),
@@ -1049,13 +1347,20 @@ class _BusinessCompactCard extends StatelessWidget {
                               child: const Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.share, size: 13, color: Color(0xFF1D1B20)),
+                                  Icon(
+                                    Icons.share,
+                                    size: 13,
+                                    color: Color(0xFF1D1B20),
+                                  ),
                                   SizedBox(width: 3),
-                                  Text('커뮤니티 공유',
-                                      style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                          color: Color(0xFF1D1B20))),
+                                  Text(
+                                    '커뮤니티 공유',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF1D1B20),
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -1065,15 +1370,24 @@ class _BusinessCompactCard extends StatelessWidget {
                     ],
                   ),
                 ],
-                
+
                 if (isExpanded) ...[
                   const SizedBox(height: 32),
                   const Divider(),
                   const SizedBox(height: 24),
-                  const Text('상세 정보', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text(
+                    '상세 정보',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 16),
-                  const Text('이곳은 업체의 상세 설명이 들어가는 공간입니다. 전체 화면 모드에서 더 많은 정보를 확인하실 수 있습니다.',
-                    style: TextStyle(fontSize: 15, color: Color(0xFF616161), height: 1.6)),
+                  const Text(
+                    '이곳은 업체의 상세 설명이 들어가는 공간입니다. 전체 화면 모드에서 더 많은 정보를 확인하실 수 있습니다.',
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Color(0xFF616161),
+                      height: 1.6,
+                    ),
+                  ),
                 ],
               ],
             ),
@@ -1088,11 +1402,14 @@ class _Dot extends StatelessWidget {
   const _Dot();
   @override
   Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.symmetric(horizontal: 6),
-        width: 3, height: 3,
-        decoration: const BoxDecoration(
-            color: Color(0xFFD0D0D0), shape: BoxShape.circle),
-      );
+    margin: const EdgeInsets.symmetric(horizontal: 6),
+    width: 3,
+    height: 3,
+    decoration: const BoxDecoration(
+      color: Color(0xFFD0D0D0),
+      shape: BoxShape.circle,
+    ),
+  );
 }
 
 // ─── 리뷰 작성 화면 (Figma 리뷰 화면) ────────────────────────────
@@ -1117,13 +1434,15 @@ class _ReviewWriteScreenState extends State<_ReviewWriteScreen> {
 
   void _submit() {
     if (_rating == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('별점을 선택해 주세요')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('별점을 선택해 주세요')));
       return;
     }
     if (_textCtrl.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('리뷰 내용을 입력해 주세요')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('리뷰 내용을 입력해 주세요')));
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
@@ -1146,11 +1465,14 @@ class _ReviewWriteScreenState extends State<_ReviewWriteScreen> {
         elevation: 0,
         leading: const BackButton(color: Color(0xFF1D1B20)),
         centerTitle: true,
-        title: const Text('리뷰',
-            style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1D1B20))),
+        title: const Text(
+          '리뷰',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF1D1B20),
+          ),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -1158,11 +1480,14 @@ class _ReviewWriteScreenState extends State<_ReviewWriteScreen> {
           children: [
             // ── 카드 1: 가게 이름 ──
             _ReviewCard(
-              child: Text(widget.businessName,
-                  style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1D1B20))),
+              child: Text(
+                widget.businessName,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1D1B20),
+                ),
+              ),
             ),
             const SizedBox(height: 12),
 
@@ -1171,24 +1496,30 @@ class _ReviewWriteScreenState extends State<_ReviewWriteScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('평점',
-                      style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF1D1B20))),
+                  const Text(
+                    '평점',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1D1B20),
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   Row(
-                    children: List.generate(5, (i) => GestureDetector(
-                      onTap: () => setState(() => _rating = i + 1),
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: Icon(
-                          i < _rating ? Icons.star : Icons.star_border,
-                          size: 40,
-                          color: const Color(0xFFFFB300),
+                    children: List.generate(
+                      5,
+                      (i) => GestureDetector(
+                        onTap: () => setState(() => _rating = i + 1),
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: Icon(
+                            i < _rating ? Icons.star : Icons.star_border,
+                            size: 40,
+                            color: const Color(0xFFFFB300),
+                          ),
                         ),
                       ),
-                    )),
+                    ),
                   ),
                 ],
               ),
@@ -1199,27 +1530,35 @@ class _ReviewWriteScreenState extends State<_ReviewWriteScreen> {
             _ReviewCard(
               child: Column(
                 children: [
-                  const Text('사진/영상을 추가해 주세요',
-                      style: TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF9E9E9E))),
+                  const Text(
+                    '사진/영상을 추가해 주세요',
+                    style: TextStyle(fontSize: 14, color: Color(0xFF9E9E9E)),
+                  ),
                   const SizedBox(height: 16),
                   GestureDetector(
                     onTap: () {},
                     child: Container(
-                      width: 48, height: 48,
+                      width: 48,
+                      height: 48,
                       decoration: const BoxDecoration(
                         color: Color(0xFF616161),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.add,
-                          color: Colors.white, size: 28),
+                      child: const Icon(
+                        Icons.add,
+                        color: Colors.white,
+                        size: 28,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text('${_photos.length}/10',
-                      style: const TextStyle(
-                          fontSize: 12, color: Color(0xFF9E9E9E))),
+                  Text(
+                    '${_photos.length}/10',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF9E9E9E),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1232,13 +1571,15 @@ class _ReviewWriteScreenState extends State<_ReviewWriteScreen> {
                 children: [
                   const Row(
                     children: [
-                      Text('✏️ ',
-                          style: TextStyle(fontSize: 14)),
-                      Text('경험을 공유해 주세요!',
-                          style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF1D1B20))),
+                      Text('✏️ ', style: TextStyle(fontSize: 14)),
+                      Text(
+                        '경험을 공유해 주세요!',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1D1B20),
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 10),
@@ -1249,9 +1590,10 @@ class _ReviewWriteScreenState extends State<_ReviewWriteScreen> {
                       hintText:
                           '${widget.businessName}에서의 경험은 어땠나요?\n욕설, 비방, 명예훼손성 표현은 누군가에게 상처가 될 수 있습니다.',
                       hintStyle: const TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFFBDBDBD),
-                          height: 1.5),
+                        fontSize: 13,
+                        color: Color(0xFFBDBDBD),
+                        height: 1.5,
+                      ),
                       border: InputBorder.none,
                     ),
                   ),
@@ -1275,11 +1617,13 @@ class _ReviewWriteScreenState extends State<_ReviewWriteScreen> {
                 foregroundColor: const Color(0xFF1D1B20),
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
-              child: const Text('등록하기',
-                  style: TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w700)),
+              child: const Text(
+                '등록하기',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
             ),
           ),
         ),
