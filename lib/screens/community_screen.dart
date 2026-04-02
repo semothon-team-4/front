@@ -1,188 +1,16 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import '../services/business_store_service.dart';
+import 'community_write_screen.dart';
 
 const _kWriteCategories = ['세탁팁', '수선', '제품추천', '의류상태'];
 
-/// 스캔 화면 등 외부에서도 게시글 작성 바텀시트를 열 수 있도록 공개 함수 제공
-void showCommunityWriteSheet(BuildContext context) {
-  final messenger = ScaffoldMessenger.of(context);
-  showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    useRootNavigator: true,
-    backgroundColor: Colors.transparent,
-    builder: (_) => _CommunityWriteSheet(messenger: messenger),
+/// 스캔 화면 등 외부에서도 게시글 작성 화면을 열 수 있도록 공개 함수 제공
+Future<Map<String, dynamic>?> showCommunityWriteSheet(BuildContext context) {
+  return Navigator.of(context, rootNavigator: true).push<Map<String, dynamic>>(
+    MaterialPageRoute(builder: (_) => const CommunityWriteScreen()),
   );
-}
-
-class _CommunityWriteSheet extends StatefulWidget {
-  final ScaffoldMessengerState messenger;
-  final void Function(String title, String content, String category)? onPosted;
-  const _CommunityWriteSheet({required this.messenger, this.onPosted});
-
-  @override
-  State<_CommunityWriteSheet> createState() => _CommunityWriteSheetState();
-}
-
-class _CommunityWriteSheetState extends State<_CommunityWriteSheet> {
-  final _titleCtrl = TextEditingController();
-  final _contentCtrl = TextEditingController();
-  String _selectedCategory = _kWriteCategories.first;
-
-  @override
-  void dispose() {
-    _titleCtrl.dispose();
-    _contentCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              '게시글 작성',
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1D1B20),
-              ),
-            ),
-            const SizedBox(height: 14),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: _kWriteCategories.map((cat) {
-                  final sel = _selectedCategory == cat;
-                  return GestureDetector(
-                    onTap: () => setState(() => _selectedCategory = cat),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      margin: const EdgeInsets.only(right: 8),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: sel
-                            ? const Color(0xFF1A39FF)
-                            : const Color(0xFFF5F5F5),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        cat,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: sel ? Colors.white : Colors.grey[600],
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _titleCtrl,
-              decoration: InputDecoration(
-                hintText: '제목을 입력하세요',
-                hintStyle: const TextStyle(color: Color(0xFFB0BEC5)),
-                filled: true,
-                fillColor: const Color(0xFFF8FAFF),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _contentCtrl,
-              maxLines: 4,
-              decoration: InputDecoration(
-                hintText: '내용을 입력하세요',
-                hintStyle: const TextStyle(color: Color(0xFFB0BEC5)),
-                filled: true,
-                fillColor: const Color(0xFFF8FAFF),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  if (_titleCtrl.text.trim().isEmpty) return;
-                  final title = _titleCtrl.text.trim();
-                  final content = _contentCtrl.text.trim();
-                  final category = _selectedCategory;
-                  Navigator.pop(context);
-                  widget.onPosted?.call(title, content, category);
-                  widget.messenger.showSnackBar(
-                    SnackBar(
-                      content: const Text('게시글이 등록되었습니다!'),
-                      backgroundColor: const Color(0xFF1A39FF),
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1A39FF),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                child: const Text(
-                  '등록하기',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class CommunityScreen extends StatefulWidget {
@@ -280,32 +108,32 @@ class _CommunityScreenState extends State<CommunityScreen>
     super.dispose();
   }
 
-  void _openWriteSheet() {
-    final messenger = ScaffoldMessenger.of(context);
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      useRootNavigator: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _CommunityWriteSheet(
-        messenger: messenger,
-        onPosted: (title, content, category) {
-          if (!mounted) return;
-          setState(() {
-            _posts.insert(0, {
-              'user': '닉네임1',
-              'avatar': '🙋',
-              'time': '방금 전',
-              'category': category,
-              'title': title,
-              'content': content,
-              'likes': 0,
-              'comments': 0,
-              'hasImage': false,
-              'isLiked': false,
-            });
-          });
-        },
+  Future<void> _openWriteSheet() async {
+    final result = await showCommunityWriteSheet(context);
+    if (result == null || !mounted) return;
+
+    setState(() {
+      _posts.insert(0, {
+        'user': '닉네임1',
+        'avatar': '🙋',
+        'time': '방금 전',
+        'category': (result['category'] as String?) ?? _kWriteCategories.first,
+        'title': (result['title'] as String?) ?? '',
+        'content': (result['content'] as String?) ?? '',
+        'likes': 0,
+        'comments': 0,
+        'hasImage': (result['hasImage'] as bool?) ?? false,
+        'imagePath': result['imagePath'] as String?,
+        'isLiked': false,
+      });
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('게시글이 등록되었습니다!'),
+        backgroundColor: const Color(0xFF1A39FF),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
@@ -790,20 +618,10 @@ class _PostCardState extends State<_PostCard> {
               ),
             ),
             if (widget.post['hasImage'] as bool)
-              Container(
+              _PostImage(
+                imagePath: widget.post['imagePath'] as String?,
                 height: 150,
                 margin: const EdgeInsets.symmetric(horizontal: 14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8F4FD),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Center(
-                  child: Icon(
-                    Icons.image_outlined,
-                    size: 38,
-                    color: Color(0xFFB0BEC5),
-                  ),
-                ),
               ),
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
@@ -927,6 +745,45 @@ class _SortChip extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _PostImage extends StatelessWidget {
+  final String? imagePath;
+  final double height;
+  final EdgeInsetsGeometry? margin;
+
+  const _PostImage({
+    required this.imagePath,
+    required this.height,
+    this.margin,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final path = imagePath;
+    final file = path == null || path.isEmpty ? null : File(path);
+    final hasLocalImage = file != null && file.existsSync();
+
+    return Container(
+      width: double.infinity,
+      height: height,
+      margin: margin,
+      decoration: BoxDecoration(
+        color: const Color(0xFFE8F4FD),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: hasLocalImage
+          ? Image.file(file, fit: BoxFit.cover)
+          : const Center(
+              child: Icon(
+                Icons.image_outlined,
+                size: 48,
+                color: Color(0xFFB0BEC5),
+              ),
+            ),
     );
   }
 }
@@ -1141,20 +998,9 @@ class _PostDetailScreenState extends State<_PostDetailScreen> {
                   // 이미지
                   if (widget.post['hasImage'] as bool) ...[
                     const SizedBox(height: 16),
-                    Container(
-                      width: double.infinity,
+                    _PostImage(
+                      imagePath: widget.post['imagePath'] as String?,
                       height: 200,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE8F4FD),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Center(
-                        child: Icon(
-                          Icons.image_outlined,
-                          size: 48,
-                          color: Color(0xFFB0BEC5),
-                        ),
-                      ),
                     ),
                   ],
                   const SizedBox(height: 16),
