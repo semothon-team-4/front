@@ -79,8 +79,16 @@ class AuthService {
     await prefs.remove(_refreshTokenKey);
   }
 
+  static String requireAccessToken() {
+    final token = _accessToken;
+    if (token == null || token.isEmpty) {
+      throw Exception('로그인이 필요합니다. 다시 로그인해주세요.');
+    }
+    return token;
+  }
+
   static Map<String, String> authorizedHeaders({Map<String, String>? extra}) {
-    return {'Authorization': 'Bearer ${_accessToken ?? ''}', ...?extra};
+    return {'Authorization': 'Bearer ${requireAccessToken()}', ...?extra};
   }
 
   static String _extractMessage(String body, {required String fallback}) {

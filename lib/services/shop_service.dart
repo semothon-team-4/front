@@ -14,7 +14,10 @@ class ShopService {
     final uri = Uri.parse(
       '${ApiConfig.baseUrl}/shops?lat=$lat&lng=$lng&radius=$radius',
     );
-    final response = await http.get(uri);
+    final response = await http.get(
+      uri,
+      headers: AuthService.authorizedHeaders(),
+    );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception('주변 매장 목록을 불러오지 못했습니다.');
