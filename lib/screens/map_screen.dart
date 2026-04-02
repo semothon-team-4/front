@@ -1,6 +1,9 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import '../services/business_store_service.dart';
+import '../services/shop_service.dart';
 import 'register_screen.dart';
 import 'community_screen.dart';
 
@@ -19,11 +22,12 @@ class _MapScreenState extends State<MapScreen> {
   bool _showOnlyLiked = false;
   final _searchCtrl = TextEditingController();
   final _sheetController = DraggableScrollableController();
+  bool _isLoadingShops = true;
 
   @override
   void initState() {
     super.initState();
-    // No-op listener, size is tracked by AnimatedBuilder/ListenableBuilder
+    _loadNearbyShops();
   }
 
   @override
@@ -39,6 +43,52 @@ class _MapScreenState extends State<MapScreen> {
 
   List<Map<String, dynamic>> get _businesses =>
       BusinessStoreService.getBusinesses();
+
+  Future<void> _loadNearbyShops() async {
+    try {
+      final shops = await ShopService.fetchNearbyShops(
+        lat: _fixedLat,
+        lng: _fixedLng,
+      );
+      final mapped = shops.map((shop) {
+        final lat = (shop['lat'] as num?)?.toDouble() ?? _fixedLat;
+        final lng = (shop['lng'] as num?)?.toDouble() ?? _fixedLng;
+        final distanceM = (_distanceBetweenMeters(
+          _fixedLat,
+          _fixedLng,
+          lat,
+          lng,
+        )).round();
+        return {
+          'id': shop['id'],
+          'placeId': shop['placeId'] ?? '',
+          'name': shop['name'],
+          'type': _inferType(shop['name'] as String? ?? ''),
+          'rating': 0.0,
+          'reviews': 0,
+          'likes': 0,
+          'isLiked': false,
+          'isVerified': false,
+          'distance': _formatDistance(distanceM),
+          'distanceM': distanceM,
+          'address': shop['address'] ?? '',
+          'tags': <String>[],
+          'isOpen': true,
+          'hours': '영업 정보 없음',
+          'lat': lat,
+          'lng': lng,
+          'imagePath': null,
+        };
+      }).toList();
+      BusinessStoreService.syncBusinesses(mapped);
+    } catch (_) {
+      // Fallback to local seed data when API is unavailable.
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingShops = false);
+      }
+    }
+  }
 
   List<Map<String, dynamic>> get _filteredAndSorted {
     var list = _selectedType == 0
@@ -88,73 +138,110 @@ class _MapScreenState extends State<MapScreen> {
     });
   }
 
+  String _inferType(String name) {
+    if (name.contains('수선')) return '수선집';
+    return '세탁소';
+  }
+
+  String _formatDistance(int meters) {
+    if (meters >= 1000) {
+      return '${(meters / 1000).toStringAsFixed(1)}km';
+    }
+    return '${meters}m';
+  }
+
+  double _distanceBetweenMeters(
+    double lat1,
+    double lng1,
+    double lat2,
+    double lng2,
+  ) {
+    const earthRadius = 6371000.0;
+    final dLat = _degToRad(lat2 - lat1);
+    final dLng = _degToRad(lng2 - lng1);
+    final a =
+        (sin(dLat / 2) * sin(dLat / 2)) +
+        cos(_degToRad(lat1)) *
+            cos(_degToRad(lat2)) *
+            (sin(dLng / 2) * sin(dLng / 2));
+    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return earthRadius * c;
+  }
+
+  double _degToRad(double degree) => degree * 3.141592653589793 / 180.0;
+
   @override
   Widget build(BuildContext context) {
     final sorted = _filteredAndSorted;
     return Scaffold(
       body: Stack(
         children: [
-          // ── 네이버 지도 ────────────────────────────────────
-          NaverMap(
-            options: NaverMapViewOptions(
-              initialCameraPosition: NCameraPosition(
-                target: NLatLng(_fixedLat, _fixedLng),
-                zoom: 15,
-              ),
-              mapType: NMapType.basic,
-              activeLayerGroups: [NLayerGroup.building, NLayerGroup.transit],
-            ),
-            onMapReady: (controller) async {
-              if (!context.mounted) return;
-              await controller.updateCamera(
-                NCameraUpdate.withParams(
-                  target: const NLatLng(_fixedLat, _fixedLng),
+          if (_isLoadingShops)
+            const Center(
+              child: CircularProgressIndicator(color: Color(0xFF1A39FF)),
+            )
+          else
+            // ── 네이버 지도 ────────────────────────────────────
+            NaverMap(
+              options: NaverMapViewOptions(
+                initialCameraPosition: NCameraPosition(
+                  target: NLatLng(_fixedLat, _fixedLng),
                   zoom: 15,
                 ),
-              );
-              if (!context.mounted) return;
-
-              // ── 내 위치 마커 ──
-              final myLocIcon = await NOverlayImage.fromWidget(
-                context: context,
-                size: const Size(26, 26),
-                widget: const _MyLocationDot(),
-              );
-              if (!context.mounted) return;
-              await controller.addOverlay(
-                NMarker(
-                  id: 'my_location',
-                  position: const NLatLng(_fixedLat, _fixedLng),
-                  icon: myLocIcon,
-                ),
-              );
-
-              // ── 업체 마커 ──
-              for (final b in _businesses) {
+                mapType: NMapType.basic,
+                activeLayerGroups: [NLayerGroup.building, NLayerGroup.transit],
+              ),
+              onMapReady: (controller) async {
                 if (!context.mounted) return;
-                final isLaundry = b['type'] == '세탁소';
-                final isVerified = b['isVerified'] ?? false;
-                final icon = await NOverlayImage.fromWidget(
-                  context: context,
-                  size: const Size(46, 46),
-                  widget: _BusinessMarkerIcon(
-                    isLaundry: isLaundry,
-                    isVerified: isVerified,
+                await controller.updateCamera(
+                  NCameraUpdate.withParams(
+                    target: const NLatLng(_fixedLat, _fixedLng),
+                    zoom: 15,
                   ),
                 );
                 if (!context.mounted) return;
-                final marker = NMarker(
-                  id: b['name'] as String,
-                  position: NLatLng(b['lat'] as double, b['lng'] as double),
-                  icon: icon,
+
+                // ── 내 위치 마커 ──
+                final myLocIcon = await NOverlayImage.fromWidget(
+                  context: context,
+                  size: const Size(26, 26),
+                  widget: const _MyLocationDot(),
                 );
-                marker.setOnTapListener(
-                  (_) => setState(() => _selectedBusiness = b),
+                if (!context.mounted) return;
+                await controller.addOverlay(
+                  NMarker(
+                    id: 'my_location',
+                    position: const NLatLng(_fixedLat, _fixedLng),
+                    icon: myLocIcon,
+                  ),
                 );
-                await controller.addOverlay(marker);
-              }
-            },
-          ),
+
+                // ── 업체 마커 ──
+                for (final b in _businesses) {
+                  if (!context.mounted) return;
+                  final isLaundry = b['type'] == '세탁소';
+                  final isVerified = b['isVerified'] ?? false;
+                  final icon = await NOverlayImage.fromWidget(
+                    context: context,
+                    size: const Size(46, 46),
+                    widget: _BusinessMarkerIcon(
+                      isLaundry: isLaundry,
+                      isVerified: isVerified,
+                    ),
+                  );
+                  if (!context.mounted) return;
+                  final marker = NMarker(
+                    id: b['name'] as String,
+                    position: NLatLng(b['lat'] as double, b['lng'] as double),
+                    icon: icon,
+                  );
+                  marker.setOnTapListener(
+                    (_) => setState(() => _selectedBusiness = b),
+                  );
+                  await controller.addOverlay(marker);
+                }
+              },
+            ),
 
           // ── 상단 정보 바 (영통1동) ──
           SafeArea(

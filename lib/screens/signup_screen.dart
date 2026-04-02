@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../services/auth_service.dart';
 import '../widgets/clothes_up_logo.dart';
 import '../widgets/seal_mascot.dart';
-import 'home_screen.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -17,6 +17,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _pwCtrl = TextEditingController();
   bool _obscurePw = true;
   bool _agreed = false;
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
@@ -26,7 +27,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (_emailCtrl.text.trim().isEmpty) {
       _showSnack('이메일을 입력해주세요');
       return;
@@ -48,10 +49,24 @@ class _SignUpScreenState extends State<SignUpScreen> {
       return;
     }
 
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
-      (_) => false,
-    );
+    setState(() => _isSubmitting = true);
+    try {
+      await AuthService.signUp(
+        email: _emailCtrl.text.trim(),
+        password: _pwCtrl.text,
+        nickname: _idCtrl.text.trim(),
+      );
+      if (!mounted) return;
+      _showSnack('회원가입이 완료되었습니다. 로그인해주세요.');
+      Navigator.of(context).pop();
+    } catch (e) {
+      if (!mounted) return;
+      _showSnack(e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
   }
 
   void _showSnack(String message) {
@@ -207,7 +222,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               SizedBox(
                 width: double.infinity,
                 child: TextButton(
-                  onPressed: _submit,
+                  onPressed: _isSubmitting ? null : _submit,
                   style: TextButton.styleFrom(
                     backgroundColor: const Color(0xFF8FEAFD),
                     foregroundColor: const Color(0xFF1D1B20),
@@ -216,10 +231,22 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       borderRadius: BorderRadius.circular(32),
                     ),
                   ),
-                  child: const Text(
-                    '회원가입',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                  ),
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Color(0xFF1D1B20),
+                          ),
+                        )
+                      : const Text(
+                          '회원가입',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                 ),
               ),
               const SizedBox(height: 20),

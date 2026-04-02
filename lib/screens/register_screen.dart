@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../services/shop_service.dart';
+
 /// 세탁소/수선집 등록 (Figma 04 — 드롭다운 인라인)
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -14,14 +16,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _addrCtrl = TextEditingController(text: '경기도 수원시 영통구 반달로 74-1');
   final _descCtrl = TextEditingController();
 
-  String? _selectedCategory;       // 세탁소 | 수선집
-  String? _selectedClothingType;   // 상의, 하의, …
+  String? _selectedCategory; // 세탁소 | 수선집
+  String? _selectedClothingType; // 상의, 하의, …
   double _minPrice = 0;
   double _maxPrice = 1000000;
   double _kindness = 0;
   double _satisfaction = 0;
   int _photoCount = 0;
   bool _showPriceSlider = false;
+  bool _isSubmitting = false;
 
   // 카테고리별 옷 종류 목록
   static const _clothingTypeMap = {
@@ -37,7 +40,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (_nameCtrl.text.trim().isEmpty) {
       _snack('업체명을 입력해주세요');
       return;
@@ -46,14 +49,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _snack('카테고리를 선택해주세요');
       return;
     }
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const _RegisterCompleteScreen()),
-    );
+
+    setState(() => _isSubmitting = true);
+    try {
+      await ShopService.registerShop(
+        name: _nameCtrl.text.trim(),
+        address: _addrCtrl.text.trim(),
+        lat: 37.2430,
+        lng: 127.0760,
+      );
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const _RegisterCompleteScreen()),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      _snack(e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
   }
 
-  void _snack(String msg) => ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(content: Text(msg)));
+  void _snack(String msg) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
   @override
   Widget build(BuildContext context) {
@@ -68,11 +89,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
         elevation: 0,
         leading: const BackButton(color: Color(0xFF1D1B20)),
         centerTitle: true,
-        title: const Text('등록하기',
-            style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1D1B20))),
+        title: const Text(
+          '등록하기',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF1D1B20),
+          ),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
@@ -97,9 +121,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Icon(Icons.add, size: 28, color: Color(0xFF1D1B20)),
-                    Text('$_photoCount/10',
-                        style: const TextStyle(
-                            fontSize: 11, color: Color(0xFF9E9E9E))),
+                    Text(
+                      '$_photoCount/10',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF9E9E9E),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -113,15 +141,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const Spacer(),
                 ValueListenableBuilder(
                   valueListenable: _nameCtrl,
-                  builder: (_, v, _) => Text('${v.text.length} / 40',
-                      style: const TextStyle(
-                          fontSize: 11, color: Color(0xFF9E9E9E))),
+                  builder: (_, v, _) => Text(
+                    '${v.text.length} / 40',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF9E9E9E),
+                    ),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            _textField(_nameCtrl,
-                maxLength: 40, hint: '업체명을 입력하세요'),
+            _textField(_nameCtrl, maxLength: 40, hint: '업체명을 입력하세요'),
             const SizedBox(height: 20),
 
             // ── 주소 ──────────────────────────────────────
@@ -131,7 +162,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 13),
+                    horizontal: 12,
+                    vertical: 13,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFF8FEAFD),
                     borderRadius: BorderRadius.circular(8),
@@ -141,9 +174,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     children: [
                       Icon(Icons.search, size: 14, color: Color(0xFF1D1B20)),
                       SizedBox(width: 4),
-                      Text('위치 검색하기',
-                          style: TextStyle(
-                              fontSize: 12, color: Color(0xFF1D1B20))),
+                      Text(
+                        '위치 검색하기',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF1D1B20),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -164,15 +201,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const Spacer(),
                   DropdownButton<String>(
                     value: _selectedCategory,
-                    hint: const Text('선택',
-                        style: TextStyle(
-                            fontSize: 13, color: Color(0xFF9E9E9E))),
+                    hint: const Text(
+                      '선택',
+                      style: TextStyle(fontSize: 13, color: Color(0xFF9E9E9E)),
+                    ),
                     underline: const SizedBox.shrink(),
-                    icon: const Icon(Icons.chevron_right,
-                        size: 18, color: Color(0xFF9E9E9E)),
+                    icon: const Icon(
+                      Icons.chevron_right,
+                      size: 18,
+                      color: Color(0xFF9E9E9E),
+                    ),
                     items: ['세탁소', '수선집']
-                        .map((c) =>
-                            DropdownMenuItem(value: c, child: Text(c)))
+                        .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                         .toList(),
                     onChanged: (v) => setState(() {
                       _selectedCategory = v;
@@ -190,19 +230,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 child: Row(
                   children: [
-                    _Label('옷 종류 (${ _selectedCategory ?? ''})'),
+                    _Label('옷 종류 (${_selectedCategory ?? ''})'),
                     const Spacer(),
                     DropdownButton<String>(
                       value: _selectedClothingType,
-                      hint: const Text('선택',
-                          style: TextStyle(
-                              fontSize: 13, color: Color(0xFF9E9E9E))),
+                      hint: const Text(
+                        '선택',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF9E9E9E),
+                        ),
+                      ),
                       underline: const SizedBox.shrink(),
-                      icon: const Icon(Icons.chevron_right,
-                          size: 18, color: Color(0xFF9E9E9E)),
+                      icon: const Icon(
+                        Icons.chevron_right,
+                        size: 18,
+                        color: Color(0xFF9E9E9E),
+                      ),
                       items: clothingTypes
-                          .map((c) => DropdownMenuItem(
-                              value: c, child: Text(c)))
+                          .map(
+                            (c) => DropdownMenuItem(value: c, child: Text(c)),
+                          )
                           .toList(),
                       onChanged: (v) =>
                           setState(() => _selectedClothingType = v),
@@ -215,8 +263,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
             // ── 가격 (탭하면 슬라이더 토글) ───────────────
             InkWell(
-              onTap: () =>
-                  setState(() => _showPriceSlider = !_showPriceSlider),
+              onTap: () => setState(() => _showPriceSlider = !_showPriceSlider),
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 child: Row(
@@ -226,13 +273,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     Text(
                       '${_minPrice.toInt()}원 ~ ${_maxPrice.toInt()}원',
                       style: const TextStyle(
-                          fontSize: 13, color: Color(0xFF9E9E9E)),
+                        fontSize: 13,
+                        color: Color(0xFF9E9E9E),
+                      ),
                     ),
                     const SizedBox(width: 4),
                     Icon(
-                      _showPriceSlider
-                          ? Icons.expand_less
-                          : Icons.expand_more,
+                      _showPriceSlider ? Icons.expand_less : Icons.expand_more,
                       size: 18,
                       color: const Color(0xFF9E9E9E),
                     ),
@@ -249,7 +296,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     inactiveTrackColor: const Color(0xFFE0E0E0),
                     thumbColor: Colors.white,
                     thumbShape: const RoundSliderThumbShape(
-                        enabledThumbRadius: 12),
+                      enabledThumbRadius: 12,
+                    ),
                     overlayColor: const Color(0x298FEAFD),
                     trackHeight: 3,
                   ),
@@ -293,17 +341,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
             width: double.infinity,
             height: 52,
             child: ElevatedButton(
-              onPressed: _submit,
+              onPressed: _isSubmitting ? null : _submit,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF8FEAFD),
                 foregroundColor: const Color(0xFF1D1B20),
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30)),
+                  borderRadius: BorderRadius.circular(30),
+                ),
               ),
-              child: const Text('등록하기',
-                  style: TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w600)),
+              child: _isSubmitting
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Color(0xFF1D1B20),
+                      ),
+                    )
+                  : const Text(
+                      '등록하기',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
             ),
           ),
         ),
@@ -311,8 +373,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  Widget _textField(TextEditingController ctrl,
-      {int? maxLength, int maxLines = 1, String? hint}) {
+  Widget _textField(
+    TextEditingController ctrl, {
+    int? maxLength,
+    int maxLines = 1,
+    String? hint,
+  }) {
     return TextField(
       controller: ctrl,
       maxLines: maxLines,
@@ -321,20 +387,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
       decoration: InputDecoration(
         counterText: '',
         hintText: hint,
-        hintStyle:
-            const TextStyle(color: Color(0xFFBDBDBD), fontSize: 13),
+        hintStyle: const TextStyle(color: Color(0xFFBDBDBD), fontSize: 13),
         border: OutlineInputBorder(
-            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-            borderRadius: BorderRadius.circular(8)),
+          borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+          borderRadius: BorderRadius.circular(8),
+        ),
         enabledBorder: OutlineInputBorder(
-            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-            borderRadius: BorderRadius.circular(8)),
+          borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+          borderRadius: BorderRadius.circular(8),
+        ),
         focusedBorder: OutlineInputBorder(
-            borderSide:
-                const BorderSide(color: Color(0xFF8FEAFD), width: 2),
-            borderRadius: BorderRadius.circular(8)),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          borderSide: const BorderSide(color: Color(0xFF8FEAFD), width: 2),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 12,
+        ),
       ),
     );
   }
@@ -346,11 +415,14 @@ class _Label extends StatelessWidget {
   const _Label(this.text);
 
   @override
-  Widget build(BuildContext context) => Text(text,
-      style: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: Color(0xFF1D1B20)));
+  Widget build(BuildContext context) => Text(
+    text,
+    style: const TextStyle(
+      fontSize: 14,
+      fontWeight: FontWeight.w600,
+      color: Color(0xFF1D1B20),
+    ),
+  );
 }
 
 // ─── 별점 행 ─────────────────────────────────────────────────
@@ -358,10 +430,11 @@ class _RatingRow extends StatelessWidget {
   final String label;
   final double value;
   final ValueChanged<double> onChanged;
-  const _RatingRow(
-      {required this.label,
-      required this.value,
-      required this.onChanged});
+  const _RatingRow({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -372,18 +445,20 @@ class _RatingRow extends StatelessWidget {
           _Label(label),
           const Spacer(),
           Row(
-            children: List.generate(5, (i) => GestureDetector(
-              onTap: () => onChanged((i + 1).toDouble()),
-              child: Icon(
-                i < value ? Icons.star : Icons.star_border,
-                size: 22,
-                color: const Color(0xFFFFB300),
+            children: List.generate(
+              5,
+              (i) => GestureDetector(
+                onTap: () => onChanged((i + 1).toDouble()),
+                child: Icon(
+                  i < value ? Icons.star : Icons.star_border,
+                  size: 22,
+                  color: const Color(0xFFFFB300),
+                ),
               ),
-            )),
+            ),
           ),
           const SizedBox(width: 4),
-          const Icon(Icons.chevron_right,
-              size: 18, color: Color(0xFF9E9E9E)),
+          const Icon(Icons.chevron_right, size: 18, color: Color(0xFF9E9E9E)),
         ],
       ),
     );
@@ -413,9 +488,10 @@ class _RegisterCompleteScreen extends StatelessWidget {
             const Text(
               '등록이 완료되었습니다!',
               style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1D1B20)),
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1D1B20),
+              ),
             ),
             const SizedBox(height: 12),
             const Text(

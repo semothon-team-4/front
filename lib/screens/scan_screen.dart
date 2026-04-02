@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import '../services/analysis_service.dart';
 import '../services/image_service.dart';
-import '../services/wardrobe_db.dart';
 import 'community_screen.dart';
 
 // 스캔 모드: 케어라벨 스캔 vs 옷 스캔
@@ -20,6 +20,7 @@ class _ScanScreenState extends State<ScanScreen>
     with SingleTickerProviderStateMixin {
   _ScanMode _mode = _ScanMode.careLabel;
   File? _scannedImage;
+  Map<String, dynamic>? _analysisResult;
   bool _isAnalyzing = false;
   bool _scanComplete = false; // 스캔 완료 카드 표시
   int _resultPage = -1; // -1: 결과 없음, 0: 1/2, 1: 2/2
@@ -48,16 +49,34 @@ class _ScanScreenState extends State<ScanScreen>
     if (file == null) return;
     setState(() {
       _scannedImage = file;
+      _analysisResult = null;
       _isAnalyzing = true;
       _scanComplete = false;
       _resultPage = -1;
     });
-    await Future.delayed(const Duration(milliseconds: 1800));
-    if (mounted) {
+    try {
+      final result = _mode == _ScanMode.clothing
+          ? await AnalysisService.requestAnalysis(
+              image: file,
+              name: '스캔한 의류',
+              category: '기타',
+            )
+          : null;
+      if (!mounted) return;
       setState(() {
+        _analysisResult = result;
         _isAnalyzing = false;
         _scanComplete = true;
       });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isAnalyzing = false;
+        _scanComplete = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
     }
   }
 
@@ -116,6 +135,7 @@ class _ScanScreenState extends State<ScanScreen>
 
   void _reset() => setState(() {
     _scannedImage = null;
+    _analysisResult = null;
     _isAnalyzing = false;
     _scanComplete = false;
     _resultPage = -1;
@@ -128,6 +148,7 @@ class _ScanScreenState extends State<ScanScreen>
       return _TagScanResultScreen(
         image: _scannedImage,
         mode: _mode,
+        analysisResult: _analysisResult,
         onNavigate: widget.onNavigate,
         onBack: () => setState(() => _resultPage = -1),
         onSave: _saveToWardrobe,
@@ -381,6 +402,23 @@ class _ScanScreenState extends State<ScanScreen>
   }
 
   Future<void> _saveToWardrobe() async {
+    if (_mode == _ScanMode.clothing) {
+      final name = (_analysisResult?['name'] as String?) ?? '스캔한 의류';
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('"$name"이(가) 내 옷장에 등록되었어요!'),
+          backgroundColor: const Color(0xFF1A39FF),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+      widget.onNavigate?.call(1);
+      return;
+    }
+
     final nameCtrl = TextEditingController();
     final categoryNotifier = ValueNotifier<String>('상의');
 
@@ -453,27 +491,14 @@ class _ScanScreenState extends State<ScanScreen>
           ? '스캔한 의류'
           : nameCtrl.text.trim();
       final now = DateTime.now();
-      String? imagePath;
-      if (_scannedImage != null) {
-        try {
-          imagePath = await ImageService.saveImageLocally(
+      try {
+        if (_scannedImage != null) {
+          await ImageService.saveImageLocally(
             _scannedImage!,
             'scan_${now.millisecondsSinceEpoch}.jpg',
           );
-        } catch (_) {}
-      }
-      try {
-        await WardrobeDB.insertClothing({
-          'name': name,
-          'category': categoryNotifier.value,
-          'grade': 'B',
-          'desc': '스캔 등록',
-          'imagePath': imagePath ?? '',
-          'lastCare': '방금 전',
-        });
-      } catch (e) {
-        debugPrint('옷장 저장 오류: $e');
-      }
+        }
+      } catch (_) {}
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -600,6 +625,7 @@ class _ScanCompleteCard extends StatelessWidget {
 class _TagScanResultScreen extends StatelessWidget {
   final File? image;
   final _ScanMode mode;
+  final Map<String, dynamic>? analysisResult;
   final ValueChanged<int>? onNavigate;
   final VoidCallback onBack;
   final VoidCallback onSave;
@@ -609,6 +635,7 @@ class _TagScanResultScreen extends StatelessWidget {
   const _TagScanResultScreen({
     required this.image,
     required this.mode,
+    required this.analysisResult,
     required this.onNavigate,
     required this.onBack,
     required this.onSave,
@@ -884,6 +911,33 @@ class _TagScanResultScreen extends StatelessWidget {
 
   // ── 의류 스캔 결과 ────────────────────────────────────────────
   Widget _buildClothingResult(BuildContext context) {
+    final result = analysisResult ?? const <String, dynamic>{};
+    final grade = (result['grade'] as String?)?.toUpperCase() ?? 'B';
+    final stainLevel = ((result['stainLevel'] as num?) ?? 10).toInt().clamp(
+      0,
+      100,
+    );
+    final damageLevel = ((result['damageLevel'] as num?) ?? 40).toInt().clamp(
+      0,
+      100,
+    );
+    final title = (result['name'] as String?)?.trim().isNotEmpty == true
+        ? result['name'] as String
+        : '스캔한 의류';
+    final category = (result['category'] as String?)?.trim().isNotEmpty == true
+        ? result['category'] as String
+        : '기타';
+    final recommendation =
+        (result['recommendation'] as String?)?.trim().isNotEmpty == true
+        ? result['recommendation'] as String
+        : '기본적인 관리는 가능하지만 일부 주의가 필요해요.';
+    final careLabels = ((result['careLabels'] as List?) ?? const [])
+        .map((label) => Map<String, dynamic>.from(label as Map))
+        .toList();
+    final subtitle = careLabels.isEmpty
+        ? '$title · $category'
+        : '$title · ${careLabels.map((label) => label['name']).join(' / ')}';
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -945,10 +999,10 @@ class _TagScanResultScreen extends StatelessWidget {
                             ),
                     ),
                     const SizedBox(height: 16),
-                    const Text(
-                      '데님 팬츠 · 면 98% / 폴리에스테르 2%',
+                    Text(
+                      subtitle,
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF7B7B7B),
@@ -968,7 +1022,7 @@ class _TagScanResultScreen extends StatelessWidget {
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              const Expanded(
+                              Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -983,16 +1037,16 @@ class _TagScanResultScreen extends StatelessWidget {
                                     SizedBox(height: 20),
                                     _ClothingMetricRow(
                                       label: '오염도',
-                                      value: 0.10,
-                                      color: Color(0xFF98DA9A),
-                                      valueLabel: '10%',
+                                      value: stainLevel / 100,
+                                      color: const Color(0xFF98DA9A),
+                                      valueLabel: '$stainLevel%',
                                     ),
                                     SizedBox(height: 14),
                                     _ClothingMetricRow(
                                       label: '손상도',
-                                      value: 0.40,
-                                      color: Color(0xFFB73D3D),
-                                      valueLabel: '40%',
+                                      value: damageLevel / 100,
+                                      color: const Color(0xFFB73D3D),
+                                      valueLabel: '$damageLevel%',
                                     ),
                                   ],
                                 ),
@@ -1009,11 +1063,11 @@ class _TagScanResultScreen extends StatelessWidget {
                                     width: 2.5,
                                   ),
                                 ),
-                                child: const Column(
+                                child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Text(
-                                      'B',
+                                      grade,
                                       style: TextStyle(
                                         fontSize: 54,
                                         fontWeight: FontWeight.w300,
@@ -1039,10 +1093,10 @@ class _TagScanResultScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    const Text(
-                      '기본적인 관리는 가능하지만 일부 주의가 필요해요.',
+                    Text(
+                      recommendation,
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF555555),

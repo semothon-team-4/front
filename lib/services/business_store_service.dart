@@ -82,6 +82,41 @@ class BusinessStoreService {
     return _businesses.map((b) => Map<String, dynamic>.from(b)).toList();
   }
 
+  static void syncBusinesses(List<Map<String, dynamic>> incoming) {
+    final likedByName = {
+      for (final business in _businesses)
+        business['name'] as String: business['isLiked'] == true,
+    };
+    final likesByName = {
+      for (final business in _businesses)
+        business['name'] as String: (business['likes'] as int?) ?? 0,
+    };
+
+    _businesses
+      ..clear()
+      ..addAll(
+        incoming.map((business) {
+          final name = business['name'] as String? ?? '';
+          return {
+            'kakaoPlaceId': '',
+            'type': '세탁소',
+            'rating': 0.0,
+            'reviews': 0,
+            'likes': likesByName[name] ?? 0,
+            'isLiked': likedByName[name] ?? false,
+            'isVerified': false,
+            'distance': '',
+            'distanceM': 0,
+            'tags': <String>[],
+            'isOpen': true,
+            'hours': '영업 정보 없음',
+            'imagePath': null,
+            ...business,
+          };
+        }),
+      );
+  }
+
   static void toggleLike(String name) {
     final target = _businesses.firstWhere((b) => b['name'] == name);
     final liked = target['isLiked'] as bool;
