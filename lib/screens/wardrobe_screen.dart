@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../widgets/share_post_sheet.dart';
 import '../services/analysis_service.dart';
@@ -443,284 +444,226 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text('내 옷장'),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-      ),
       body: _loading
           ? const Center(
               child: CircularProgressIndicator(color: Color(0xFF1A39FF)),
             )
-          : CustomScrollView(
-              slivers: [
-                // ── 통계 헤더 ────────────────────────────────────
-                SliverToBoxAdapter(
-                  child: Container(
-                    color: Colors.white,
-                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
-                    child: Row(
-                      children: [
-                        Container(
+          : SafeArea(
+              bottom: false,
+              child: CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                      child: _WardrobeHeader(
+                        totalCount: _items.length,
+                        gradeCount: gradeCount,
+                        onClose: () {
+                          if (Navigator.of(context).canPop()) {
+                            Navigator.of(context).pop();
+                          } else {
+                            widget.onNavigate?.call(0);
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+
+                  if ((gradeCount['D'] ?? 0) > 0)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                        child: Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 14,
+                            horizontal: 16,
+                            vertical: 12,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFE8F0FF),
+                            color: const Color(0xFFFFF3E0),
                             borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: const Color(0xFFFFCC02)),
                           ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
+                          child: Row(
                             children: [
                               const Icon(
-                                Icons.checkroom,
-                                size: 24,
-                                color: Color(0xFF1A39FF),
+                                Icons.warning_amber_rounded,
+                                color: Color(0xFFFB8C00),
+                                size: 20,
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${_items.length}',
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF1A39FF),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  '관리가 필요한 의류가 ${gradeCount['D']}벌 있어요',
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFFE65100),
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Row(
-                            children: ['A', 'B', 'C', 'D'].map((g) {
-                              final count = gradeCount[g] ?? 0;
-                              final color = _gradeColor(g);
-                              return Expanded(
-                                child: Container(
-                                  margin: const EdgeInsets.only(right: 4),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 4,
-                                    vertical: 12,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: color.withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        '$count',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w700,
-                                          color: color,
-                                        ),
-                                      ),
-                                      Text(
-                                        '$g등급',
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          color: color,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
 
-                // ── D등급 경고 ──────────────────────────────────
-                if ((gradeCount['D'] ?? 0) > 0)
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFF3E0),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: const Color(0xFFFFCC02)),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.warning_amber_rounded,
-                              color: Color(0xFFFB8C00),
-                              size: 20,
+                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          const Text(
+                            '분류',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF1D1B20),
                             ),
-                            const SizedBox(width: 10),
-                            Text(
-                              '관리가 필요한 의류가 ${gradeCount['D']}벌 있어요',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: Color(0xFFE65100),
-                                fontWeight: FontWeight.w500,
+                          ),
+                          GestureDetector(
+                            onTap: () async {
+                              final cats = ['전체', '상의', '하의', '아우터', '기타'];
+                              final picked = await showModalBottomSheet<String>(
+                                context: context,
+                                shape: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.vertical(
+                                    top: Radius.circular(20),
+                                  ),
+                                ),
+                                builder: (_) => Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const SizedBox(height: 12),
+                                    Container(
+                                      width: 36,
+                                      height: 4,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFE0E0E0),
+                                        borderRadius: BorderRadius.circular(2),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    ...cats.map(
+                                      (c) => ListTile(
+                                        title: Text(
+                                          c,
+                                          style: const TextStyle(fontSize: 15),
+                                        ),
+                                        trailing: _selectedCategory == c
+                                            ? const Icon(
+                                                Icons.check,
+                                                color: Color(0xFF1A39FF),
+                                              )
+                                            : null,
+                                        onTap: () => Navigator.pop(context, c),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                  ],
+                                ),
+                              );
+                              if (picked != null) {
+                                setState(() => _selectedCategory = picked);
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF79D5F1),
+                                borderRadius: BorderRadius.circular(999),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.12),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    _selectedCategory,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      color: Color(0xFF1D1B20),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  const Icon(
+                                    Icons.keyboard_arrow_down,
+                                    size: 18,
+                                    color: Color(0xFF1D1B20),
+                                  ),
+                                ],
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
 
-                // ── 분류 필터 ────────────────────────────────────
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-                    child: Row(
-                      children: [
-                        const Text(
-                          '분류',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF1D1B20),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: () async {
-                            final cats = ['전체', '상의', '하의', '아우터', '기타'];
-                            final picked = await showModalBottomSheet<String>(
-                              context: context,
-                              shape: const RoundedRectangleBorder(
-                                borderRadius: BorderRadius.vertical(
-                                  top: Radius.circular(20),
-                                ),
-                              ),
-                              builder: (_) => Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const SizedBox(height: 12),
-                                  Container(
-                                    width: 36,
-                                    height: 4,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFE0E0E0),
-                                      borderRadius: BorderRadius.circular(2),
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 90),
+                    sliver: filtered.isEmpty
+                        ? SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 60),
+                              child: Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: const [
+                                    Icon(
+                                      Icons.checkroom_outlined,
+                                      size: 52,
+                                      color: Color(0xFFCFD8DC),
                                     ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  ...cats.map(
-                                    (c) => ListTile(
-                                      title: Text(
-                                        c,
-                                        style: const TextStyle(fontSize: 15),
+                                    SizedBox(height: 12),
+                                    Text(
+                                      '등록된 의류가 없어요',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Color(0xFF90A4AE),
                                       ),
-                                      trailing: _selectedCategory == c
-                                          ? const Icon(
-                                              Icons.check,
-                                              color: Color(0xFF1A39FF),
-                                            )
-                                          : null,
-                                      onTap: () => Navigator.pop(context, c),
                                     ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                ],
+                                  ],
+                                ),
                               ),
-                            );
-                            if (picked != null) {
-                              setState(() => _selectedCategory = picked);
-                            }
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 5,
                             ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFDCF9FF),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  _selectedCategory,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    color: Color(0xFF1D1B20),
-                                  ),
+                          )
+                        : SliverGrid(
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) => _ClothingCard(
+                                item: filtered[index],
+                                gradeColor: _gradeColor(
+                                  (filtered[index]['grade'] as String?) ?? 'A',
                                 ),
-                                const SizedBox(width: 4),
-                                const Icon(
-                                  Icons.keyboard_arrow_down,
-                                  size: 16,
-                                  color: Color(0xFF1D1B20),
-                                ),
-                              ],
+                                onTap: () => _showDetailSheet(filtered[index]),
+                                onShare: () => _openShareSheet(filtered[index]),
+                              ),
+                              childCount: filtered.length,
                             ),
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  crossAxisSpacing: 12,
+                                  mainAxisSpacing: 12,
+                                  childAspectRatio: 0.78,
+                                ),
                           ),
-                        ),
-                      ],
-                    ),
                   ),
-                ),
-
-                // ── 그리드 ──────────────────────────────────────
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 90),
-                  sliver: filtered.isEmpty
-                      ? SliverToBoxAdapter(
-                          child: Padding(
-                            padding: const EdgeInsets.only(top: 60),
-                            child: Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: const [
-                                  Icon(
-                                    Icons.checkroom_outlined,
-                                    size: 52,
-                                    color: Color(0xFFCFD8DC),
-                                  ),
-                                  SizedBox(height: 12),
-                                  Text(
-                                    '등록된 의류가 없어요',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Color(0xFF90A4AE),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        )
-                      : SliverGrid(
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) => _ClothingCard(
-                              item: filtered[index],
-                              gradeColor: _gradeColor(
-                                (filtered[index]['grade'] as String?) ?? 'A',
-                              ),
-                              onTap: () => _showDetailSheet(filtered[index]),
-                              onShare: () => _openShareSheet(filtered[index]),
-                            ),
-                            childCount: filtered.length,
-                          ),
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                                crossAxisSpacing: 12,
-                                mainAxisSpacing: 12,
-                                childAspectRatio: 0.78,
-                              ),
-                        ),
-                ),
-              ],
+                ],
+              ),
             ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddClothingSheet,
@@ -729,6 +672,209 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
         label: const Text(
           '의류 추가',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
+      ),
+    );
+  }
+}
+
+class _WardrobeHeader extends StatelessWidget {
+  final int totalCount;
+  final Map<String, int> gradeCount;
+  final VoidCallback onClose;
+
+  const _WardrobeHeader({
+    required this.totalCount,
+    required this.gradeCount,
+    required this.onClose,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          height: 48,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: InkWell(
+                  onTap: onClose,
+                  borderRadius: BorderRadius.circular(24),
+                  child: const Padding(
+                    padding: EdgeInsets.all(8),
+                    child: Icon(
+                      Icons.close_rounded,
+                      size: 32,
+                      color: Color(0xFF1D1B20),
+                    ),
+                  ),
+                ),
+              ),
+              const Center(
+                child: Text(
+                  '내 옷장',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF1D1B20),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 18),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            const cardCount = 5;
+            const preferredCardSize = 71.0;
+            const minGap = 2.0;
+
+            final availableWidth = constraints.maxWidth;
+            final cardSize = math.min(
+              preferredCardSize,
+              (availableWidth - (minGap * (cardCount - 1))) / cardCount,
+            );
+            final gap =
+                ((availableWidth - (cardSize * cardCount)) / (cardCount - 1))
+                    .clamp(minGap, 8.0);
+
+            return Row(
+              children: [
+                _WardrobeStatCard(
+                  size: cardSize,
+                  count: totalCount,
+                  title: '옷',
+                  subtitle: null,
+                  icon: Icons.checkroom_outlined,
+                  textColor: const Color(0xFF2A2D34),
+                  gradientColors: const [Color(0xFF8ADAF0), Color(0xFFFFFFFF)],
+                ),
+                SizedBox(width: gap),
+                ...['A', 'B', 'C', 'D'].map((grade) {
+                  final config = switch (grade) {
+                    'A' => (
+                      title: 'A등급',
+                      gradient: const [Color(0xFFFF9EA8), Color(0xFFFFFFFF)],
+                    ),
+                    'B' => (
+                      title: 'B등급',
+                      gradient: const [Color(0xFFFFC39A), Color(0xFFFFFFFF)],
+                    ),
+                    'C' => (
+                      title: 'C등급',
+                      gradient: const [Color(0xFFFFE88F), Color(0xFFFFFFFF)],
+                    ),
+                    _ => (
+                      title: 'D등급',
+                      gradient: const [Color(0xFFC9FF74), Color(0xFFFFFFFF)],
+                    ),
+                  };
+
+                  return Padding(
+                    padding: EdgeInsets.only(right: grade == 'D' ? 0 : gap),
+                    child: _WardrobeStatCard(
+                      size: cardSize,
+                      count: gradeCount[grade] ?? 0,
+                      title: config.title,
+                      subtitle: null,
+                      textColor: const Color(0xFF2A2D34),
+                      gradientColors: config.gradient,
+                    ),
+                  );
+                }),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _WardrobeStatCard extends StatelessWidget {
+  final double size;
+  final int count;
+  final String title;
+  final String? subtitle;
+  final IconData? icon;
+  final Color textColor;
+  final List<Color> gradientColors;
+
+  const _WardrobeStatCard({
+    required this.size,
+    required this.count,
+    required this.title,
+    this.subtitle,
+    this.icon,
+    required this.textColor,
+    required this.gradientColors,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(22),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: gradientColors,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.18),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.9),
+            width: 1.2,
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              '$count',
+              style: TextStyle(
+                fontSize: size * 0.24,
+                fontWeight: FontWeight.w800,
+                color: textColor,
+              ),
+            ),
+            SizedBox(height: size * 0.055),
+            if (icon != null)
+              Icon(icon, size: size * 0.36, color: textColor)
+            else
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: size * 0.13,
+                  fontWeight: FontWeight.w700,
+                  color: textColor,
+                ),
+              ),
+            if (subtitle != null) ...[
+              SizedBox(height: size * 0.03),
+              Text(
+                subtitle!,
+                style: TextStyle(
+                  fontSize: size * 0.13,
+                  fontWeight: FontWeight.w700,
+                  color: textColor,
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );
