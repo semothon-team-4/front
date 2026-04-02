@@ -14,6 +14,35 @@ Future<Map<String, dynamic>?> showCommunityWriteSheet(BuildContext context) {
   );
 }
 
+void openCommunityPostDetail(BuildContext context, Map<String, dynamic> post) {
+  final normalizedPost = <String, dynamic>{
+    'user': '닉네임1',
+    'avatar': '🙋',
+    'time': '방금 전',
+    'category': '세탁팁',
+    'title': '',
+    'content': '아직 본문이 등록되지 않았어요.',
+    'likes': 0,
+    'comments': 0,
+    'hasImage': false,
+    'imagePath': null,
+    'isLiked': false,
+    ...post,
+  };
+
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => _PostDetailScreen(
+        post: normalizedPost,
+        isLiked: (normalizedPost['isLiked'] as bool?) ?? false,
+        likes: (normalizedPost['likes'] as int?) ?? 0,
+        onLikeChanged: (liked, likes) {},
+      ),
+    ),
+  );
+}
+
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
 

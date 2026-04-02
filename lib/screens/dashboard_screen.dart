@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'community_screen.dart';
 import '../widgets/seal_mascot.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -65,15 +66,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
     {
       'user': '세탁왕김씨',
       'title': '청바지 색 빠짐 방지하는 비법 공유해요!',
+      'content': '청바지 처음 세탁할 때 소금물에 30분 담가두면 색이 훨씬 덜 빠져요.',
       'likes': 128,
+      'comments': 23,
       'category': '세탁팁',
+      'time': '5분 전',
+      'hasImage': true,
+      'isLiked': false,
       'avatar': '🧺',
     },
     {
       'user': '패션피플',
       'title': '실크 세탁, 이렇게 하니까 망하지 않았어요',
+      'content': '실크는 미지근한 물에 중성세제, 손으로 살살 세탁했더니 결이 살아있어요.',
       'likes': 204,
+      'comments': 45,
       'category': '세탁팁',
+      'time': '5시간 전',
+      'hasImage': false,
+      'isLiked': false,
       'avatar': '👗',
     },
   ];
@@ -607,7 +618,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       .map(
                         (post) => _HotPostCard(
                           post: post,
-                          onTap: () => widget.onNavigate(4),
+                          onTap: () => openCommunityPostDetail(context, post),
                         ),
                       )
                       .toList(),
@@ -818,15 +829,18 @@ class _HotPostCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 5),
-                  Text(
-                    post['title'] as String,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1A237E),
+                  GestureDetector(
+                    onTap: onTap,
+                    child: Text(
+                      post['title'] as String,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1A237E),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
