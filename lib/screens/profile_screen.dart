@@ -307,64 +307,73 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
               ),
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _QuickMenu(
-                    imagePath: 'assets/images/profile_quick_favorite.png',
-                    label: '관심 매장',
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => _LikedBusinessesScreen(
-                          nickname: _nickname,
-                          profileImage: _profileImage,
+                  Expanded(
+                    child: _QuickMenu(
+                      imagePath: 'assets/images/profile_quick_favorite.png',
+                      label: '관심 매장',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => _LikedBusinessesScreen(
+                            nickname: _nickname,
+                            profileImage: _profileImage,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                  _QuickMenu(
-                    imagePath: 'assets/images/profile_quick_interest_post.png',
-                    label: '관심 글',
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => _RecentViewedPostsScreen(
-                          nickname: _nickname,
-                          profileImage: _profileImage,
+                  Expanded(
+                    child: _QuickMenu(
+                      imagePath:
+                          'assets/images/profile_quick_interest_post.png',
+                      label: '관심 글',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => _RecentViewedPostsScreen(
+                            nickname: _nickname,
+                            profileImage: _profileImage,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                  _QuickMenu(
-                    imagePath: 'assets/images/profile_quick_review.png',
-                    label: '리뷰 내역',
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => _MyReviewsScreen(
-                          nickname: _nickname,
-                          profileImage: _profileImage,
+                  Expanded(
+                    child: _QuickMenu(
+                      imagePath: 'assets/images/profile_quick_review.png',
+                      label: '리뷰 내역',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => _MyReviewsScreen(
+                            nickname: _nickname,
+                            profileImage: _profileImage,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                  _QuickMenu(
-                    imagePath: 'assets/images/profile_quick_notification.png',
-                    label: '알림 설정',
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => _NotificationScreen(
-                          pushEnabled: _pushEnabled,
-                          laundryAlarm: _laundryAlarm,
-                          communityAlarm: _communityAlarm,
-                          onChanged: (push, laundry, community) => setState(() {
-                            _pushEnabled = push;
-                            _laundryAlarm = laundry;
-                            _communityAlarm = community;
-                          }),
+                  Expanded(
+                    child: _QuickMenu(
+                      imagePath: 'assets/images/profile_quick_notification.png',
+                      label: '알림 설정',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => _NotificationScreen(
+                            pushEnabled: _pushEnabled,
+                            laundryAlarm: _laundryAlarm,
+                            communityAlarm: _communityAlarm,
+                            onChanged: (push, laundry, community) =>
+                                setState(() {
+                                  _pushEnabled = push;
+                                  _laundryAlarm = laundry;
+                                  _communityAlarm = community;
+                                }),
+                          ),
                         ),
                       ),
                     ),
@@ -391,24 +400,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF1D1B20),
-                      ),
-                    ),
-                  ),
-                  _item(
-                    '알림 설정',
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => _NotificationScreen(
-                          pushEnabled: _pushEnabled,
-                          laundryAlarm: _laundryAlarm,
-                          communityAlarm: _communityAlarm,
-                          onChanged: (push, laundry, community) => setState(() {
-                            _pushEnabled = push;
-                            _laundryAlarm = laundry;
-                            _communityAlarm = community;
-                          }),
-                        ),
                       ),
                     ),
                   ),
@@ -561,7 +552,7 @@ class _RecentViewedPostsScreen extends StatelessWidget {
       title: '관심 글',
       nickname: nickname,
       profileImage: profileImage,
-      sectionImagePath: 'assets/images/profile_quick_recent.png',
+      sectionImagePath: 'assets/images/profile_quick_interest_post.png',
       emptyText: '아직 본 게시글이 없어요.',
       isEmpty: posts.isEmpty,
       child: ListView.separated(
@@ -812,6 +803,46 @@ class _MyReviewCard extends StatelessWidget {
 
   const _MyReviewCard({required this.review});
 
+  Widget _buildReviewImage() {
+    final rawImage = review['imagePath']?.toString() ?? '';
+    final images = (review['images'] as List? ?? const [])
+        .map((item) => item?.toString() ?? '')
+        .where((item) => item.isNotEmpty)
+        .toList();
+    final image = images.isNotEmpty ? images.first : rawImage;
+
+    if (image.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final isRemote =
+        image.startsWith('http://') || image.startsWith('https://');
+    final file = isRemote ? null : File(image);
+    final hasLocalImage = file != null && file.existsSync();
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: hasLocalImage
+          ? Image.file(file, width: 84, height: 84, fit: BoxFit.cover)
+          : Image.network(
+              image,
+              width: 84,
+              height: 84,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => Container(
+                width: 84,
+                height: 84,
+                color: const Color(0xFFF1F5F9),
+                alignment: Alignment.center,
+                child: const Icon(
+                  Icons.image_outlined,
+                  color: Color(0xFF94A3B8),
+                ),
+              ),
+            ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final rating = (review['rating'] as num?)?.toInt() ?? 0;
@@ -865,17 +896,10 @@ class _MyReviewCard extends StatelessWidget {
               color: Color(0xFF4B5563),
             ),
           ),
-          if ((review['imagePath']?.toString() ?? '').isNotEmpty) ...[
+          if (((review['imagePath']?.toString() ?? '').isNotEmpty) ||
+              ((review['images'] as List? ?? const []).isNotEmpty)) ...[
             const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.file(
-                File(review['imagePath'].toString()),
-                width: 84,
-                height: 84,
-                fit: BoxFit.cover,
-              ),
-            ),
+            _buildReviewImage(),
           ],
         ],
       ),
@@ -890,6 +914,9 @@ class _RecentPostCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final likes = (post['likes'] as num?)?.toInt() ?? 0;
+    final comments = (post['comments'] as num?)?.toInt() ?? 0;
+
     return InkWell(
       onTap: () => openCommunityPostDetail(context, post),
       borderRadius: BorderRadius.circular(16),
@@ -939,6 +966,40 @@ class _RecentPostCard extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 12,
                     color: Color(0xFF98A2B3),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Icon(
+                  Icons.favorite_rounded,
+                  size: 16,
+                  color: Color(0xFFFF7B8F),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '$likes',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF667085),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                const Icon(
+                  Icons.mode_comment_outlined,
+                  size: 15,
+                  color: Color(0xFF7C8BA1),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '$comments',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF667085),
                   ),
                 ),
               ],
@@ -1462,26 +1523,35 @@ class _QuickMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: 24,
-            height: 24,
-            child: Image.asset(imagePath, fit: BoxFit.contain),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 28,
+                height: 28,
+                child: Image.asset(imagePath, fit: BoxFit.contain),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: Color(0xFF1D1B20),
+                  fontWeight: FontWeight.w600,
+                  height: 1.3,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 11,
-              color: Color(0xFF1D1B20),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

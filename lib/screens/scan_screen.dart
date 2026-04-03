@@ -300,7 +300,7 @@ class _CareLabelScanScreenState extends State<CareLabelScanScreen>
             ValueListenableBuilder<String>(
               valueListenable: categoryNotifier,
               builder: (_, selected, _) => DropdownButtonFormField<String>(
-                value: selected,
+                initialValue: selected,
                 decoration: InputDecoration(
                   labelText: '카테고리',
                   filled: true,

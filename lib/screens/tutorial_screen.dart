@@ -16,26 +16,26 @@ class _TutorialScreenState extends State<TutorialScreen> {
 
   static const _pages = [
     (
-      title: '주변 세탁소 / 수선집\n가격 비교',
-      description: '영수증 리뷰 기반으로\n실제 가격을 투명하게 비교해요',
+      title: ' 세탁소 / 수선집\n가격 비교',
+      description: '영수증 기반 리뷰와 매장별 best 3를 \n 한눈에 볼 수 있어요. ',
       icon: Icons.local_laundry_service_rounded,
       accent: Color(0xFFE3F8FF),
     ),
     (
-      title: '케어라벨 스캔으로\n세탁 방법을 빠르게 확인해요',
-      description: '옷의 세탁 기호를 읽고 관리법을 정리해서,\n헷갈리지 않게 도와줘요.',
+      title: '택 스캔으로\n세탁 법 확인',
+      description: '카메라로 세탁 택을 찍으면 \nAI가 기호를 바로 분석해드려요.',
       icon: Icons.qr_code_scanner_rounded,
       accent: Color(0xFFE8F9FF),
     ),
     (
-      title: '의류 상태를 분석하고\n옷장에 저장할 수 있어요',
-      description: '오염도와 손상도를 보고 지금 내 옷 상태를\n직관적으로 확인할 수 있어요.',
+      title: '의류 상태\n A-D 등급 진단',
+      description: '옷을 스캔하면 세탁 기호와 함께\n손상 위험도를 등급으로 알려드려요.',
       icon: Icons.checkroom_rounded,
       accent: Color(0xFFEAFBF2),
     ),
     (
-      title: '커뮤니티에서 정보 공유하고\n다른 사람 프로필도 볼 수 있어요',
-      description: '후기와 세탁 팁을 나누고,\n저장한 매장 리스트까지 함께 살펴보세요.',
+      title: '커뮤니티에서 \n경험 나누기',
+      description: '자유롭게 글을 올리거나\n진단 결과를 공유하고 조언을 받아보세요.',
       icon: Icons.groups_rounded,
       accent: Color(0xFFFFF6DE),
     ),

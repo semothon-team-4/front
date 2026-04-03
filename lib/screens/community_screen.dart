@@ -2,11 +2,10 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import '../services/business_store_service.dart';
+import '../services/community_service.dart';
 import '../services/profile_activity_service.dart';
 import 'community_write_screen.dart';
 import '../widgets/mascot_profile_avatar.dart';
-
-const _kWriteCategories = ['세탁팁', '수선', '제품추천', '의류상태'];
 
 /// 스캔 화면 등 외부에서도 게시글 작성 화면을 열 수 있도록 공개 함수 제공
 Future<Map<String, dynamic>?> showCommunityWriteSheet(BuildContext context) {
@@ -81,24 +80,34 @@ class _CommunityScreenState extends State<CommunityScreen>
   final _searchCtrl = TextEditingController();
   String _searchQuery = '';
   int _sortMode = 0; // 0=추천순, 1=인기순, 2=최신순
+  bool _isLoading = true;
+  bool _isSubmitting = false;
+  String? _loadError;
+  late List<Map<String, dynamic>> _posts;
+  List<Map<String, dynamic>> _popularPosts = [];
 
-  final List<Map<String, dynamic>> _posts = [
+  final List<Map<String, dynamic>> _fallbackPosts = [
     {
+      'id': null,
       'user': '세탁왕김씨',
       'avatar': '🧺',
       'time': '5분 전',
+      'createdAt': '',
       'category': '세탁팁',
       'title': '청바지 색 빠짐 방지하는 비법 공유해요!',
       'content': '청바지 처음 세탁할 때 소금물에 30분 담가두면 색이 훨씬 덜 빠져요.',
       'likes': 128,
       'comments': 23,
       'hasImage': true,
+      'imagePath': null,
       'isLiked': false,
     },
     {
+      'id': null,
       'user': '옷수선마스터',
       'avatar': '✂️',
       'time': '1시간 전',
+      'createdAt': '',
       'category': '수선',
       'title': '강남 00수선집 강추해요',
       'content': '지퍼 교체부터 기장 수선까지 정말 깔끔하게 해주시고 가격도 합리적이에요.',
@@ -108,21 +117,26 @@ class _CommunityScreenState extends State<CommunityScreen>
       'isLiked': true,
     },
     {
+      'id': null,
       'user': '깔끔생활',
       'avatar': '🫧',
       'time': '3시간 전',
+      'createdAt': '',
       'category': '제품추천',
       'title': '울 전용 세제 써봤는데 대박이에요',
       'content': '이번에 새로 나온 울 전용 세제 써봤는데 부드럽고 냄새도 없어요.',
       'likes': 89,
       'comments': 31,
       'hasImage': true,
+      'imagePath': null,
       'isLiked': false,
     },
     {
+      'id': null,
       'user': '패션피플',
       'avatar': '👗',
       'time': '5시간 전',
+      'createdAt': '',
       'category': '세탁팁',
       'title': '실크 세탁, 이렇게 하니까 망하지 않았어요',
       'content': '실크는 미지근한 물에 중성세제, 손으로 살살 세탁했더니 결이 살아있어요.',
@@ -132,9 +146,11 @@ class _CommunityScreenState extends State<CommunityScreen>
       'isLiked': false,
     },
     {
+      'id': null,
       'user': '옷장관리자',
       'avatar': '👔',
       'time': '어제',
+      'createdAt': '',
       'category': '의류상태',
       'title': '울 스웨터 상태 공유 (D등급)',
       'content': '필링이 너무 심해서 공유해요. 세탁 전후 비교해볼게요!',
@@ -148,10 +164,13 @@ class _CommunityScreenState extends State<CommunityScreen>
   @override
   void initState() {
     super.initState();
+    _posts = List<Map<String, dynamic>>.from(_fallbackPosts);
+    _popularPosts = _derivePopularPosts(_posts);
     _tabController = TabController(length: _tabs.length, vsync: this);
     _searchCtrl.addListener(
       () => setState(() => _searchQuery = _searchCtrl.text),
     );
+    _loadPosts();
   }
 
   @override
@@ -161,34 +180,107 @@ class _CommunityScreenState extends State<CommunityScreen>
     super.dispose();
   }
 
+  Future<void> _loadPosts({bool showLoader = true}) async {
+    if (showLoader && mounted) {
+      setState(() => _isLoading = true);
+    }
+
+    try {
+      final posts = await CommunityService.fetchPosts();
+      List<Map<String, dynamic>> popular;
+      try {
+        popular = await CommunityService.fetchPopularPosts();
+      } catch (_) {
+        popular = _derivePopularPosts(posts);
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _posts = posts;
+        _popularPosts = popular;
+        _loadError = null;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _posts = List<Map<String, dynamic>>.from(_fallbackPosts);
+        _popularPosts = _derivePopularPosts(_posts);
+        _loadError = _toErrorMessage(e);
+        _isLoading = false;
+      });
+    }
+  }
+
+  List<Map<String, dynamic>> _derivePopularPosts(
+    List<Map<String, dynamic>> posts,
+  ) {
+    final sorted = List<Map<String, dynamic>>.from(posts)
+      ..sort(
+        (a, b) => ((b['likes'] as int) + (b['comments'] as int)).compareTo(
+          (a['likes'] as int) + (a['comments'] as int),
+        ),
+      );
+    return sorted.take(2).toList();
+  }
+
+  String _toErrorMessage(Object error) {
+    final raw = error.toString().replaceFirst('Exception: ', '').trim();
+    if (raw.isEmpty) {
+      return '커뮤니티 서버에 연결하지 못했습니다.';
+    }
+    if (raw.contains('Failed host lookup') || raw.contains('SocketException')) {
+      return '커뮤니티 서버에 연결하지 못했습니다.';
+    }
+    return raw;
+  }
+
   Future<void> _openWriteSheet() async {
     final result = await showCommunityWriteSheet(context);
     if (result == null || !mounted) return;
 
-    setState(() {
-      _posts.insert(0, {
-        'user': '닉네임1',
-        'avatar': '🙋',
-        'time': '방금 전',
-        'category': (result['category'] as String?) ?? _kWriteCategories.first,
-        'title': (result['title'] as String?) ?? '',
-        'content': (result['content'] as String?) ?? '',
-        'likes': 0,
-        'comments': 0,
-        'hasImage': (result['hasImage'] as bool?) ?? false,
-        'imagePath': result['imagePath'] as String?,
-        'isLiked': false,
-      });
-    });
+    setState(() => _isSubmitting = true);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('게시글이 등록되었습니다!'),
-        backgroundColor: const Color(0xFF1A39FF),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
+    try {
+      await CommunityService.createPost(
+        title: (result['title'] as String?)?.trim() ?? '',
+        content: (result['content'] as String?)?.trim() ?? '',
+      );
+      await _loadPosts(showLoader: false);
+      if (!mounted) return;
+
+      final hasImage = (result['hasImage'] as bool?) ?? false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            hasImage
+                ? '게시글이 등록되었습니다. 현재 서버에서는 이미지 업로드가 지원되지 않아 본문만 저장됐어요.'
+                : '게시글이 등록되었습니다!',
+          ),
+          backgroundColor: const Color(0xFF1A39FF),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_toErrorMessage(e)),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
   }
 
   @override
@@ -291,202 +383,264 @@ class _CommunityScreenState extends State<CommunityScreen>
           ),
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: _tabs.map((tab) {
-          // 탭 + 검색어 동시 필터
-          var filtered = tab == '전체'
-              ? List<Map<String, dynamic>>.from(_posts)
-              : _posts.where((p) => p['category'] == tab).toList();
-          if (_searchQuery.isNotEmpty) {
-            final q = _searchQuery.toLowerCase();
-            filtered = filtered
-                .where(
-                  (p) =>
-                      (p['title'] as String).toLowerCase().contains(q) ||
-                      (p['content'] as String).toLowerCase().contains(q),
-                )
-                .toList();
-          }
-          // 정렬 적용
-          final sorted = List<Map<String, dynamic>>.from(filtered);
-          if (_sortMode == 1) {
-            sorted.sort(
-              (a, b) => (b['likes'] as int).compareTo(a['likes'] as int),
-            );
-          } else if (_sortMode == 2) {
-            // 최신순은 기본 순서 유지
-          } else {
-            // 추천순: likes + comments 합산
-            sorted.sort(
-              (a, b) => ((b['likes'] as int) + (b['comments'] as int))
-                  .compareTo((a['likes'] as int) + (a['comments'] as int)),
-            );
-          }
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : TabBarView(
+              controller: _tabController,
+              children: _tabs.map((tab) {
+                // 탭 + 검색어 동시 필터
+                var filtered = tab == '전체'
+                    ? List<Map<String, dynamic>>.from(_posts)
+                    : _posts.where((p) => p['category'] == tab).toList();
+                if (_searchQuery.isNotEmpty) {
+                  final q = _searchQuery.toLowerCase();
+                  filtered = filtered
+                      .where(
+                        (p) =>
+                            (p['title'] as String).toLowerCase().contains(q) ||
+                            (p['content'] as String).toLowerCase().contains(q),
+                      )
+                      .toList();
+                }
+                // 정렬 적용
+                final sorted = List<Map<String, dynamic>>.from(filtered);
+                if (_sortMode == 1) {
+                  sorted.sort(
+                    (a, b) => (b['likes'] as int).compareTo(a['likes'] as int),
+                  );
+                } else if (_sortMode == 2) {
+                  // 최신순은 기본 순서 유지
+                } else {
+                  // 추천순: likes + comments 합산
+                  sorted.sort(
+                    (a, b) => ((b['likes'] as int) + (b['comments'] as int))
+                        .compareTo(
+                          (a['likes'] as int) + (a['comments'] as int),
+                        ),
+                  );
+                }
 
-          if (sorted.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.search_off,
-                    size: 48,
-                    color: Color(0xFFCFD8DC),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    _searchQuery.isNotEmpty
-                        ? '"$_searchQuery" 검색 결과가 없어요'
-                        : '아직 게시글이 없어요',
-                    style: const TextStyle(
-                      color: Color(0xFF90A4AE),
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          // 인기글 상위 2개 (likes 기준)
-          final topPosts = List<Map<String, dynamic>>.from(filtered)
-            ..sort((a, b) => (b['likes'] as int).compareTo(a['likes'] as int));
-          final hotPosts = topPosts.take(2).toList();
-
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(0, 0, 0, 80),
-            children: [
-              // ── 정렬 칩 ──────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-                child: Row(
-                  children: [
-                    _SortChip(
-                      label: '추천순',
-                      active: _sortMode == 0,
-                      onTap: () => setState(() => _sortMode = 0),
-                    ),
-                    const SizedBox(width: 8),
-                    _SortChip(
-                      label: '인기순',
-                      active: _sortMode == 1,
-                      onTap: () => setState(() => _sortMode = 1),
-                    ),
-                    const SizedBox(width: 8),
-                    _SortChip(
-                      label: '최신순',
-                      active: _sortMode == 2,
-                      onTap: () => setState(() => _sortMode = 2),
-                    ),
-                  ],
-                ),
-              ),
-
-              // ── 실시간 인기글 ─────────────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                child: Row(
-                  children: const [
-                    Icon(
-                      Icons.local_fire_department,
-                      size: 16,
-                      color: Color(0xFF1A39FF),
-                    ),
-                    SizedBox(width: 4),
-                    Text(
-                      '실시간 인기글',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1A39FF),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              ...hotPosts.map(
-                (p) => Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 4,
-                  ),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF5F8FF),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFE3EAFF)),
-                    ),
-                    child: Row(
+                if (sorted.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         const Icon(
-                          Icons.emoji_events_outlined,
-                          size: 16,
-                          color: Color(0xFF1A39FF),
+                          Icons.search_off,
+                          size: 48,
+                          color: Color(0xFFCFD8DC),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            p['title'] as String,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              color: Color(0xFF1D1B20),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                        const SizedBox(height: 12),
+                        Text(
+                          _searchQuery.isNotEmpty
+                              ? '"$_searchQuery" 검색 결과가 없어요'
+                              : '아직 게시글이 없어요',
+                          style: const TextStyle(
+                            color: Color(0xFF90A4AE),
+                            fontSize: 14,
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Row(
-                          children: [
-                            _LikeIcon(isActive: true, size: 12),
-                            const SizedBox(width: 3),
-                            Text(
-                              '${p['likes']}',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: Color(0xFF9E9E9E),
-                              ),
-                            ),
-                          ],
                         ),
                       ],
                     ),
-                  ),
-                ),
-              ),
+                  );
+                }
 
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Divider(height: 1, color: Color(0xFFEEEEEE)),
-              ),
+                final hotPosts = tab == '전체'
+                    ? _popularPosts
+                    : _derivePopularPosts(filtered);
 
-              // ── 전체 게시글 ───────────────────────────────
-              ...sorted.map(
-                (p) => Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 4,
+                return RefreshIndicator(
+                  onRefresh: () => _loadPosts(showLoader: false),
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(0, 0, 0, 80),
+                    children: [
+                      if (_loadError != null && tab == '전체')
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFF4F4),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: const Color(0xFFFFD6D6),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.wifi_off_rounded,
+                                  size: 18,
+                                  color: Color(0xFFDA4A4A),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    '백엔드 연결에 실패해 샘플 게시글을 보여주고 있어요. ${_loadError!}',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF9F3C3C),
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      // ── 정렬 칩 ──────────────────────────────────
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+                        child: Row(
+                          children: [
+                            _SortChip(
+                              label: '추천순',
+                              active: _sortMode == 0,
+                              onTap: () => setState(() => _sortMode = 0),
+                            ),
+                            const SizedBox(width: 8),
+                            _SortChip(
+                              label: '인기순',
+                              active: _sortMode == 1,
+                              onTap: () => setState(() => _sortMode = 1),
+                            ),
+                            const SizedBox(width: 8),
+                            _SortChip(
+                              label: '최신순',
+                              active: _sortMode == 2,
+                              onTap: () => setState(() => _sortMode = 2),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // ── 실시간 인기글 ─────────────────────────────
+                      if (hotPosts.isNotEmpty) ...[
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                          child: Row(
+                            children: const [
+                              Icon(
+                                Icons.local_fire_department,
+                                size: 16,
+                                color: Color(0xFF1A39FF),
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                '실시간 인기글',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF1A39FF),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      ...hotPosts.map(
+                        (p) => Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 4,
+                          ),
+                          child: GestureDetector(
+                            onTap: () => openCommunityPostDetail(context, p),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF5F8FF),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: const Color(0xFFE3EAFF),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.emoji_events_outlined,
+                                    size: 16,
+                                    color: Color(0xFF1A39FF),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      p['title'] as String,
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                        color: Color(0xFF1D1B20),
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Row(
+                                    children: [
+                                      _LikeIcon(isActive: true, size: 12),
+                                      const SizedBox(width: 3),
+                                      Text(
+                                        '${p['likes']}',
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: Color(0xFF9E9E9E),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (hotPosts.isNotEmpty)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          child: Divider(height: 1, color: Color(0xFFEEEEEE)),
+                        ),
+
+                      // ── 전체 게시글 ───────────────────────────────
+                      ...sorted.map(
+                        (p) => Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 4,
+                          ),
+                          child: _PostCard(post: p),
+                        ),
+                      ),
+                    ],
                   ),
-                  child: _PostCard(post: p),
-                ),
-              ),
-            ],
-          );
-        }).toList(),
-      ),
+                );
+              }).toList(),
+            ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openWriteSheet,
+        onPressed: _isSubmitting ? null : _openWriteSheet,
         backgroundColor: const Color(0xFF8FEAFD),
         foregroundColor: const Color(0xFF1D1B20),
         elevation: 0,
-        icon: const Icon(Icons.edit),
-        label: const Text('글쓰기', style: TextStyle(fontWeight: FontWeight.w600)),
+        icon: _isSubmitting
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.edit),
+        label: Text(
+          _isSubmitting ? '등록 중...' : '글쓰기',
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
       ),
     );
   }
@@ -523,12 +677,24 @@ class _PostCard extends StatefulWidget {
 class _PostCardState extends State<_PostCard> {
   late bool _isLiked;
   late int _likes;
+  bool _isLikeBusy = false;
 
   @override
   void initState() {
     super.initState();
     _isLiked = widget.post['isLiked'] as bool;
     _likes = widget.post['likes'] as int;
+  }
+
+  @override
+  void didUpdateWidget(covariant _PostCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.post['id'] != widget.post['id'] ||
+        oldWidget.post['likes'] != widget.post['likes'] ||
+        oldWidget.post['isLiked'] != widget.post['isLiked']) {
+      _isLiked = widget.post['isLiked'] as bool;
+      _likes = widget.post['likes'] as int;
+    }
   }
 
   Color _categoryColor(String cat) {
@@ -552,6 +718,49 @@ class _PostCardState extends State<_PostCard> {
       userName: widget.post['user'] as String,
       avatar: widget.post['avatar'] as String,
     );
+  }
+
+  Future<void> _toggleLike() async {
+    if (_isLikeBusy) return;
+
+    final postId = (widget.post['id'] as num?)?.toInt();
+    if (postId == null) {
+      setState(() {
+        _isLiked = !_isLiked;
+        _likes += _isLiked ? 1 : -1;
+      });
+      return;
+    }
+
+    setState(() => _isLikeBusy = true);
+
+    try {
+      final nextLiked = await CommunityService.toggleLike(postId);
+      if (!mounted) return;
+
+      setState(() {
+        if (_isLiked != nextLiked) {
+          _likes += nextLiked ? 1 : -1;
+        }
+        _isLiked = nextLiked;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLikeBusy = false);
+      }
+    }
   }
 
   @override
@@ -679,10 +888,7 @@ class _PostCardState extends State<_PostCard> {
               child: Row(
                 children: [
                   GestureDetector(
-                    onTap: () => setState(() {
-                      _isLiked = !_isLiked;
-                      _likes += _isLiked ? 1 : -1;
-                    }),
+                    onTap: _toggleLike,
                     child: Row(
                       children: [
                         AnimatedSwitcher(
@@ -698,7 +904,9 @@ class _PostCardState extends State<_PostCard> {
                           '$_likes',
                           style: TextStyle(
                             fontSize: 13,
-                            color: _isLiked
+                            color: _isLikeBusy
+                                ? const Color(0xFFB0BEC5)
+                                : _isLiked
                                 ? const Color(0xFF1A39FF)
                                 : const Color(0xFF90A4AE),
                             fontWeight: FontWeight.w500,
@@ -811,7 +1019,8 @@ class _PostImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final path = imagePath;
-    final file = path == null || path.isEmpty ? null : File(path);
+    final isRemote = path != null && path.startsWith('http');
+    final file = path == null || path.isEmpty || isRemote ? null : File(path);
     final hasLocalImage = file != null && file.existsSync();
 
     return Container(
@@ -825,6 +1034,18 @@ class _PostImage extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: hasLocalImage
           ? Image.file(file, fit: BoxFit.cover)
+          : isRemote
+          ? Image.network(
+              path,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => const Center(
+                child: Icon(
+                  Icons.image_outlined,
+                  size: 48,
+                  color: Color(0xFFB0BEC5),
+                ),
+              ),
+            )
           : const Center(
               child: Icon(
                 Icons.image_outlined,
@@ -855,24 +1076,25 @@ class _PostDetailScreen extends StatefulWidget {
 }
 
 class _PostDetailScreenState extends State<_PostDetailScreen> {
+  late Map<String, dynamic> _post;
   late bool _isLiked;
   late int _likes;
   final _commentCtrl = TextEditingController();
-  final List<Map<String, dynamic>> _comments = [
-    {'user': '세탁마니아', 'avatar': '🧼', 'text': '정말 도움이 됐어요!', 'time': '1분 전'},
-    {
-      'user': '옷관리왕',
-      'avatar': '👕',
-      'text': '저도 이 방법 써봤는데 효과 있어요',
-      'time': '5분 전',
-    },
-  ];
+  List<Map<String, dynamic>> _comments = [];
+  bool _isDetailLoading = false;
+  bool _isLikeBusy = false;
+  bool _isCommentBusy = false;
 
   @override
   void initState() {
     super.initState();
+    _post = Map<String, dynamic>.from(widget.post);
     _isLiked = widget.isLiked;
     _likes = widget.likes;
+    _comments = ((widget.post['commentsList'] as List?) ?? const [])
+        .map((item) => Map<String, dynamic>.from(item as Map))
+        .toList();
+    _loadDetail();
   }
 
   @override
@@ -896,19 +1118,121 @@ class _PostDetailScreenState extends State<_PostDetailScreen> {
     }
   }
 
-  void _submitComment() {
-    final text = _commentCtrl.text.trim();
-    if (text.isEmpty) return;
-    setState(() {
-      _comments.insert(0, {
-        'user': '나',
-        'avatar': '🙋',
-        'text': text,
-        'time': '방금 전',
+  Future<void> _loadDetail() async {
+    final postId = (_post['id'] as num?)?.toInt();
+    if (postId == null) return;
+
+    setState(() => _isDetailLoading = true);
+    try {
+      final detail = await CommunityService.fetchPostDetail(postId);
+      if (!mounted) return;
+
+      ProfileActivityService.addRecentViewedPost(detail);
+      setState(() {
+        _post = detail;
+        _isLiked = detail['isLiked'] as bool? ?? false;
+        _likes = detail['likes'] as int? ?? 0;
+        _comments = ((detail['commentsList'] as List?) ?? const [])
+            .map((item) => Map<String, dynamic>.from(item as Map))
+            .toList();
       });
-    });
-    _commentCtrl.clear();
-    FocusScope.of(context).unfocus();
+      widget.onLikeChanged(_isLiked, _likes);
+    } catch (_) {
+      if (!mounted) return;
+    } finally {
+      if (mounted) {
+        setState(() => _isDetailLoading = false);
+      }
+    }
+  }
+
+  Future<void> _toggleLike() async {
+    if (_isLikeBusy) return;
+
+    final postId = (_post['id'] as num?)?.toInt();
+    if (postId == null) {
+      setState(() {
+        _isLiked = !_isLiked;
+        _likes += _isLiked ? 1 : -1;
+      });
+      widget.onLikeChanged(_isLiked, _likes);
+      return;
+    }
+
+    setState(() => _isLikeBusy = true);
+    try {
+      final nextLiked = await CommunityService.toggleLike(postId);
+      if (!mounted) return;
+
+      setState(() {
+        if (_isLiked != nextLiked) {
+          _likes += nextLiked ? 1 : -1;
+        }
+        _isLiked = nextLiked;
+      });
+      widget.onLikeChanged(_isLiked, _likes);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLikeBusy = false);
+      }
+    }
+  }
+
+  Future<void> _submitComment() async {
+    final text = _commentCtrl.text.trim();
+    if (text.isEmpty || _isCommentBusy) return;
+
+    final postId = (_post['id'] as num?)?.toInt();
+    if (postId == null) {
+      setState(() {
+        _comments.insert(0, {
+          'user': '나',
+          'avatar': '🙋',
+          'text': text,
+          'time': '방금 전',
+        });
+      });
+      _commentCtrl.clear();
+      FocusScope.of(context).unfocus();
+      return;
+    }
+
+    setState(() => _isCommentBusy = true);
+    try {
+      await CommunityService.addComment(postId, text);
+      if (!mounted) return;
+      _commentCtrl.clear();
+      FocusScope.of(context).unfocus();
+      await _loadDetail();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isCommentBusy = false);
+      }
+    }
   }
 
   void _openUserProfile() {
@@ -916,8 +1240,8 @@ class _PostDetailScreenState extends State<_PostDetailScreen> {
       context,
       MaterialPageRoute(
         builder: (_) => _CommunityUserProfileScreen(
-          userName: widget.post['user'] as String,
-          avatar: widget.post['avatar'] as String,
+          userName: _post['user'] as String,
+          avatar: _post['avatar'] as String? ?? '🙋',
         ),
       ),
     );
@@ -925,7 +1249,7 @@ class _PostDetailScreenState extends State<_PostDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final cat = widget.post['category'] as String;
+    final cat = _post['category'] as String;
     final catColor = _categoryColor(cat);
 
     return Scaffold(
@@ -948,7 +1272,7 @@ class _PostDetailScreenState extends State<_PostDetailScreen> {
             onTap: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('"${widget.post['title']}" 링크가 복사되었습니다'),
+                  content: Text('"${_post['title']}" 링크가 복사되었습니다'),
                   backgroundColor: const Color(0xFF1A39FF),
                   behavior: SnackBarBehavior.floating,
                   shape: RoundedRectangleBorder(
@@ -977,6 +1301,10 @@ class _PostDetailScreenState extends State<_PostDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (_isDetailLoading) ...[
+                    const LinearProgressIndicator(minHeight: 2),
+                    const SizedBox(height: 16),
+                  ],
                   // 작성자 정보
                   Row(
                     children: [
@@ -994,7 +1322,7 @@ class _PostDetailScreenState extends State<_PostDetailScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              widget.post['user'],
+                              _post['user'],
                               style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold,
@@ -1002,7 +1330,7 @@ class _PostDetailScreenState extends State<_PostDetailScreen> {
                               ),
                             ),
                             Text(
-                              widget.post['time'],
+                              _post['time'],
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: Color(0xFFB0BEC5),
@@ -1016,7 +1344,7 @@ class _PostDetailScreenState extends State<_PostDetailScreen> {
                   const SizedBox(height: 16),
                   // 제목
                   Text(
-                    widget.post['title'],
+                    _post['title'],
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -1026,7 +1354,7 @@ class _PostDetailScreenState extends State<_PostDetailScreen> {
                   const SizedBox(height: 12),
                   // 본문
                   Text(
-                    widget.post['content'],
+                    _post['content'],
                     style: const TextStyle(
                       fontSize: 14,
                       color: Color(0xFF546E7A),
@@ -1034,10 +1362,10 @@ class _PostDetailScreenState extends State<_PostDetailScreen> {
                     ),
                   ),
                   // 이미지
-                  if (widget.post['hasImage'] as bool) ...[
+                  if (_post['hasImage'] as bool? ?? false) ...[
                     const SizedBox(height: 16),
                     _PostImage(
-                      imagePath: widget.post['imagePath'] as String?,
+                      imagePath: _post['imagePath'] as String?,
                       height: 200,
                     ),
                   ],
@@ -1046,13 +1374,7 @@ class _PostDetailScreenState extends State<_PostDetailScreen> {
                   Row(
                     children: [
                       GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _isLiked = !_isLiked;
-                            _likes += _isLiked ? 1 : -1;
-                          });
-                          widget.onLikeChanged(_isLiked, _likes);
-                        },
+                        onTap: _toggleLike,
                         child: Row(
                           children: [
                             AnimatedSwitcher(
@@ -1068,7 +1390,9 @@ class _PostDetailScreenState extends State<_PostDetailScreen> {
                               '$_likes',
                               style: TextStyle(
                                 fontSize: 14,
-                                color: _isLiked
+                                color: _isLikeBusy
+                                    ? const Color(0xFFB0BEC5)
+                                    : _isLiked
                                     ? const Color(0xFF1A39FF)
                                     : const Color(0xFF90A4AE),
                               ),
@@ -1177,6 +1501,7 @@ class _PostDetailScreenState extends State<_PostDetailScreen> {
                 Expanded(
                   child: TextField(
                     controller: _commentCtrl,
+                    enabled: !_isCommentBusy,
                     decoration: InputDecoration(
                       hintText: '댓글을 입력하세요',
                       hintStyle: const TextStyle(
@@ -1198,7 +1523,7 @@ class _PostDetailScreenState extends State<_PostDetailScreen> {
                 ),
                 const SizedBox(width: 8),
                 GestureDetector(
-                  onTap: _submitComment,
+                  onTap: _isCommentBusy ? null : _submitComment,
                   child: Container(
                     width: 40,
                     height: 40,
@@ -1206,11 +1531,17 @@ class _PostDetailScreenState extends State<_PostDetailScreen> {
                       color: Color(0xFF1A39FF),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
-                      Icons.send,
-                      size: 18,
-                      color: Colors.white,
-                    ),
+                    child: _isCommentBusy
+                        ? const Padding(
+                            padding: EdgeInsets.all(10),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                          )
+                        : const Icon(Icons.send, size: 18, color: Colors.white),
                   ),
                 ),
               ],
