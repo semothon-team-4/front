@@ -5,6 +5,8 @@ import 'package:image_picker/image_picker.dart';
 
 import '../services/image_service.dart';
 
+const _kWriteCategories = ['세탁팁', '수선', '제품추천', '의류상태'];
+
 class CommunityWriteScreen extends StatefulWidget {
   const CommunityWriteScreen({super.key});
 
@@ -17,6 +19,7 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
   final _contentCtrl = TextEditingController();
   final _titleFocusNode = FocusNode();
   File? _selectedImage;
+  String _selectedCategory = _kWriteCategories.first;
 
   bool get _canSubmit =>
       _titleCtrl.text.trim().isNotEmpty && _contentCtrl.text.trim().isNotEmpty;
@@ -58,8 +61,23 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
       'content': _contentCtrl.text.trim(),
       'imagePath': _selectedImage?.path,
       'hasImage': _selectedImage != null,
-      'category': '세탁팁',
+      'category': _selectedCategory,
     });
+  }
+
+  Color _categoryColor(String category) {
+    switch (category) {
+      case '세탁팁':
+        return const Color(0xFF1A39FF);
+      case '수선':
+        return const Color(0xFFE91E63);
+      case '제품추천':
+        return const Color(0xFF43A047);
+      case '의류상태':
+        return const Color(0xFFFB8C00);
+      default:
+        return const Color(0xFF90A4AE);
+    }
   }
 
   @override
@@ -132,6 +150,76 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      const Text(
+                        '카테고리',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF5E5852),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: _kWriteCategories.map((category) {
+                          final color = _categoryColor(category);
+                          final isSelected = _selectedCategory == category;
+
+                          return GestureDetector(
+                            onTap: () {
+                              if (_selectedCategory == category) return;
+                              setState(() => _selectedCategory = category);
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              curve: Curves.easeOut,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? color.withValues(alpha: 0.14)
+                                    : const Color(0xFFF6F7FB),
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? color.withValues(alpha: 0.38)
+                                      : const Color(0xFFE5E7EB),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      color: color,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    category,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w700
+                                          : FontWeight.w600,
+                                      color: isSelected
+                                          ? color
+                                          : const Color(0xFF6B7280),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 20),
                       TextField(
                         controller: _titleCtrl,
                         focusNode: _titleFocusNode,

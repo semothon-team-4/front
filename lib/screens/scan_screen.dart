@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../widgets/analysis_result_view.dart';
-import '../services/analysis_service.dart';
 import '../services/image_service.dart';
 
 // --- 케어라벨 스캔 화면 ---
@@ -287,7 +286,7 @@ class _CareLabelScanScreenState extends State<CareLabelScanScreen>
             ValueListenableBuilder<String>(
               valueListenable: categoryNotifier,
               builder: (_, selected, _) => DropdownButtonFormField<String>(
-                value: selected,
+                initialValue: selected,
                 decoration: InputDecoration(
                   labelText: '카테고리',
                   filled: true,

@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import '../widgets/analysis_result_view.dart';
 import '../widgets/share_post_sheet.dart';
 import '../services/analysis_service.dart';
-import 'scan_screen.dart';
 
 class WardrobeScreen extends StatefulWidget {
   final ValueChanged<int>? onNavigate;
@@ -167,7 +166,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => SharePostSheet(
-        initialTitle: '$itemName 상태 공유 (${itemGrade}등급)',
+        initialTitle: '$itemName 상태 공유 ($itemGrade등급)',
         initialContent: '$itemDesc\n\n마지막 세탁: $itemLastCare',
         category: '의류상태',
         imagePreview: Container(
