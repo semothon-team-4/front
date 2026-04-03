@@ -419,11 +419,11 @@ class AnalysisResultView extends StatelessWidget {
     final String guideTip =
         (result['guideTip'] as String?) ??
         '의류의 형태를 유지하기 위해 통풍이 잘 되는 곳에 보관해 주세요.';
-    final needWash = result['needWash'] == true;
-    final needRepair = result['needRepair'] == true;
-    final guideStatusLabel = (!needWash && !needRepair)
-        ? '관리 불필요'
-        : (needRepair ? '수선 필요' : '세탁 권장');
+    final isGoodGrade = grade == 'A';
+    final displayedGuideStatusLabel = isGoodGrade ? '관리 불필요' : '관리 필요';
+    final displayedGuideTitle = isGoodGrade
+        ? '옷 상태가 매우 좋아요. 현재 상태 그대로 보관하면 오래 입을 수 있어요.'
+        : '옷 상태가 매우 좋지 않아요. 현재 상태 그대로 보관하면 오래 입을 수 없어요.';
 
     // 등급별 컬러링
     final gradeColor = switch (grade) {
@@ -526,27 +526,52 @@ class AnalysisResultView extends StatelessWidget {
                           Expanded(
                             flex: 2,
                             child: Container(
-                              alignment: Alignment.bottomCenter,
-                              padding: const EdgeInsets.only(top: 20),
+                              alignment: Alignment.center,
+                              padding: const EdgeInsets.only(top: 12),
                               child: Column(
-                                mainAxisAlignment: MainAxisAlignment.end,
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
-                                  Text(
-                                    grade,
-                                    style: TextStyle(
-                                      fontSize: 68,
-                                      fontWeight: FontWeight.bold,
-                                      color: gradeColor.withValues(alpha: 0.8),
-                                      height: 0.85,
+                                  Container(
+                                    width: 132,
+                                    height: 132,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.92),
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(
+                                            alpha: 0.06,
+                                          ),
+                                          blurRadius: 14,
+                                          offset: const Offset(0, 6),
+                                        ),
+                                      ],
                                     ),
-                                  ),
-                                  const Text(
-                                    '등급',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF546E7A),
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          grade,
+                                          style: TextStyle(
+                                            fontSize: 68,
+                                            fontWeight: FontWeight.bold,
+                                            color: gradeColor.withValues(
+                                              alpha: 0.8,
+                                            ),
+                                            height: 0.85,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        const Text(
+                                          '등급',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFF546E7A),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
@@ -642,18 +667,22 @@ class AnalysisResultView extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(
-                            Icons.check,
+                          Icon(
+                            isGoodGrade ? Icons.check : Icons.warning_amber_rounded,
                             size: 18,
-                            color: Color(0xFF10B981),
+                            color: isGoodGrade
+                                ? const Color(0xFF10B981)
+                                : const Color(0xFFE53935),
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            guideStatusLabel,
-                            style: const TextStyle(
+                            displayedGuideStatusLabel,
+                            style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
-                              color: Color(0xFF333333),
+                              color: isGoodGrade
+                                  ? const Color(0xFF333333)
+                                  : const Color(0xFF2D2D2D),
                             ),
                           ),
                         ],
@@ -661,7 +690,9 @@ class AnalysisResultView extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      guideTitle,
+                      displayedGuideTitle.isNotEmpty
+                          ? displayedGuideTitle
+                          : guideTitle,
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
