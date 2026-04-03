@@ -21,23 +21,9 @@ class _CareLabelScanScreenState extends State<CareLabelScanScreen> with SingleTi
   bool _scanComplete = false;
   int _resultPage = -1;
 
-  late AnimationController _scanLineCtrl;
-  late Animation<double> _scanLineAnim;
-
   @override
   void initState() {
     super.initState();
-    _scanLineCtrl = AnimationController(
-      duration: const Duration(seconds: 2),
-      vsync: this,
-    )..repeat();
-    _scanLineAnim = Tween<double>(begin: 0, end: 1).animate(_scanLineCtrl);
-  }
-
-  @override
-  void dispose() {
-    _scanLineCtrl.dispose();
-    super.dispose();
   }
 
   Future<void> _pickAndScan(ImageSource source) async {
@@ -131,7 +117,7 @@ class _CareLabelScanScreenState extends State<CareLabelScanScreen> with SingleTi
           if (_isAnalyzing)
             Positioned.fill(
               child: Container(
-                color: Colors.black.withOpacity(0.6),
+                color: Colors.black.withValues(alpha: 0.6),
                 child: const Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -217,9 +203,9 @@ class _CareLabelScanScreenState extends State<CareLabelScanScreen> with SingleTi
         width: 44,
         height: 44,
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.2),
+          color: Colors.white.withValues(alpha: 0.2),
           shape: BoxShape.circle,
-          border: Border.all(color: Colors.white.withOpacity(0.6), width: 1.5),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.6), width: 1.5),
         ),
         child: Icon(icon, color: Colors.white, size: 20),
       ),
@@ -327,47 +313,18 @@ class _CareLabelScanScreenState extends State<CareLabelScanScreen> with SingleTi
       alignment: Alignment.center,
       children: [
         CustomPaint(painter: _GridPainter(), child: const SizedBox.expand()),
-        SizedBox(
-          width: 240,
-          height: 160,
-          child: Stack(
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0x5542A5F5), width: 1),
-                ),
+        // main 스타일의 원형 가이드라인
+        CircleAvatar(
+          radius: 120,
+          backgroundColor: Colors.white.withValues(alpha: 0.05),
+          child: Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: const Color(0xFF8FEAFD).withValues(alpha: 0.3),
+                width: 2,
               ),
-              Positioned(top: 0, left: 0, child: _Corner(top: true, left: true)),
-              Positioned(
-                  top: 0, right: 0, child: _Corner(top: true, left: false)),
-              Positioned(
-                  bottom: 0, left: 0, child: _Corner(top: false, left: true)),
-              Positioned(
-                  bottom: 0, right: 0, child: _Corner(top: false, left: false)),
-              AnimatedBuilder(
-                animation: _scanLineAnim,
-                builder: (_, _) => Positioned(
-                  top: _scanLineAnim.value * 150,
-                  left: 0,
-                  right: 0,
-                  child: Container(
-                    height: 2,
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.transparent,
-                          Color(0xCC8FEAFD),
-                          Color(0xFF8FEAFD),
-                          Color(0xCC8FEAFD),
-                          Colors.transparent,
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ],
@@ -391,23 +348,9 @@ class _ClothingScanScreenState extends State<ClothingScanScreen> with SingleTick
   bool _scanComplete = false;
   int _resultPage = -1;
 
-  late AnimationController _scanLineCtrl;
-  late Animation<double> _scanLineAnim;
-
   @override
   void initState() {
     super.initState();
-    _scanLineCtrl = AnimationController(
-      duration: const Duration(seconds: 2),
-      vsync: this,
-    )..repeat();
-    _scanLineAnim = Tween<double>(begin: 0, end: 1).animate(_scanLineCtrl);
-  }
-
-  @override
-  void dispose() {
-    _scanLineCtrl.dispose();
-    super.dispose();
   }
 
   Future<void> _pickAndScan(ImageSource source) async {
@@ -496,7 +439,7 @@ class _ClothingScanScreenState extends State<ClothingScanScreen> with SingleTick
           if (_isAnalyzing)
             Positioned.fill(
               child: Container(
-                color: Colors.black.withOpacity(0.6),
+                color: Colors.black.withValues(alpha: 0.6),
                 child: const Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -582,9 +525,9 @@ class _ClothingScanScreenState extends State<ClothingScanScreen> with SingleTick
         width: 44,
         height: 44,
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.2),
+          color: Colors.white.withValues(alpha: 0.2),
           shape: BoxShape.circle,
-          border: Border.all(color: Colors.white.withOpacity(0.6), width: 1.5),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.6), width: 1.5),
         ),
         child: Icon(icon, color: Colors.white, size: 20),
       ),
@@ -596,47 +539,17 @@ class _ClothingScanScreenState extends State<ClothingScanScreen> with SingleTick
       alignment: Alignment.center,
       children: [
         CustomPaint(painter: _GridPainter(), child: const SizedBox.expand()),
-        SizedBox(
-          width: 240,
-          height: 160,
-          child: Stack(
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0x5542A5F5), width: 1),
-                ),
+        CircleAvatar(
+          radius: 120,
+          backgroundColor: Colors.white.withValues(alpha: 0.05),
+          child: Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: const Color(0xFF8FEAFD).withValues(alpha: 0.3),
+                width: 2,
               ),
-              Positioned(top: 0, left: 0, child: _Corner(top: true, left: true)),
-              Positioned(
-                  top: 0, right: 0, child: _Corner(top: true, left: false)),
-              Positioned(
-                  bottom: 0, left: 0, child: _Corner(top: false, left: true)),
-              Positioned(
-                  bottom: 0, right: 0, child: _Corner(top: false, left: false)),
-              AnimatedBuilder(
-                animation: _scanLineAnim,
-                builder: (_, _) => Positioned(
-                  top: _scanLineAnim.value * 150,
-                  left: 0,
-                  right: 0,
-                  child: Container(
-                    height: 2,
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.transparent,
-                          Color(0xCC8FEAFD),
-                          Color(0xFF8FEAFD),
-                          Color(0xCC8FEAFD),
-                          Colors.transparent,
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ],
@@ -692,7 +605,7 @@ class _ScanCompleteCard extends StatelessWidget {
                 width: 52,
                 height: 52,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF8FEAFD).withOpacity(0.1),
+                  color: const Color(0xFF8FEAFD).withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -733,28 +646,6 @@ class _ScanCompleteCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _Corner extends StatelessWidget {
-  final bool top;
-  final bool left;
-  const _Corner({required this.top, required this.left});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 20,
-      height: 20,
-      decoration: BoxDecoration(
-        border: Border(
-          top: top ? const BorderSide(color: Color(0xFF8FEAFD), width: 3) : BorderSide.none,
-          bottom: !top ? const BorderSide(color: Color(0xFF8FEAFD), width: 3) : BorderSide.none,
-          left: left ? const BorderSide(color: Color(0xFF8FEAFD), width: 3) : BorderSide.none,
-          right: !left ? const BorderSide(color: Color(0xFF8FEAFD), width: 3) : BorderSide.none,
-        ),
       ),
     );
   }
