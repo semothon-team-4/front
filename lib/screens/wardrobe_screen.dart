@@ -799,11 +799,9 @@ class _ClothingCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final imageUrl = (item['imageUrl'] as String?) ?? '';
     final imagePath = (item['imagePath'] as String?) ?? '';
-<<<<<<< HEAD
-    final itemName = (item['name'] as String?) ?? '이름 없음';
+    final itemName = (item['name'] as String?) ?? '이름 없는 의류';
     final itemCategory = (item['category'] as String?) ?? '기타';
     final itemLastCare = (item['lastCare'] as String?) ?? '방금 전';
-=======
     final grade = (item['grade'] as String?)?.toUpperCase();
     final isTag = grade == null || grade.isEmpty;
     final badgeText = isTag ? 'TAG' : grade;
@@ -814,7 +812,6 @@ class _ClothingCard extends StatelessWidget {
       'D' => const Color(0xFFC9FF74),
       _ => const Color(0xFF8EDBF1),
     };
->>>>>>> 751c35f7612361cedb0bf00bc3a451095c420791
     return GestureDetector(
       onTap: onTap,
       child: Container(
