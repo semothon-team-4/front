@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import '../services/business_store_service.dart';
+import '../services/profile_activity_service.dart';
 import 'community_write_screen.dart';
 import '../widgets/mascot_profile_avatar.dart';
 
@@ -14,7 +15,13 @@ Future<Map<String, dynamic>?> showCommunityWriteSheet(BuildContext context) {
   );
 }
 
-void openCommunityPostDetail(BuildContext context, Map<String, dynamic> post) {
+void openCommunityPostDetail(
+  BuildContext context,
+  Map<String, dynamic> post, {
+  bool? isLiked,
+  int? likes,
+  void Function(bool liked, int likes)? onLikeChanged,
+}) {
   final normalizedPost = <String, dynamic>{
     'user': '닉네임1',
     'avatar': '🙋',
@@ -30,15 +37,31 @@ void openCommunityPostDetail(BuildContext context, Map<String, dynamic> post) {
     ...post,
   };
 
+  ProfileActivityService.addRecentViewedPost(normalizedPost);
+
   Navigator.push(
     context,
     MaterialPageRoute(
       builder: (_) => _PostDetailScreen(
         post: normalizedPost,
-        isLiked: (normalizedPost['isLiked'] as bool?) ?? false,
-        likes: (normalizedPost['likes'] as int?) ?? 0,
-        onLikeChanged: (liked, likes) {},
+        isLiked: isLiked ?? (normalizedPost['isLiked'] as bool?) ?? false,
+        likes: likes ?? (normalizedPost['likes'] as int?) ?? 0,
+        onLikeChanged: onLikeChanged ?? (liked, likes) {},
       ),
+    ),
+  );
+}
+
+void openCommunityUserProfile(
+  BuildContext context, {
+  required String userName,
+  String avatar = '🙋',
+}) {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) =>
+          _CommunityUserProfileScreen(userName: userName, avatar: avatar),
     ),
   );
 }
@@ -508,14 +531,10 @@ class _PostCardState extends State<_PostCard> {
   }
 
   void _openUserProfile() {
-    Navigator.push(
+    openCommunityUserProfile(
       context,
-      MaterialPageRoute(
-        builder: (_) => _CommunityUserProfileScreen(
-          userName: widget.post['user'] as String,
-          avatar: widget.post['avatar'] as String,
-        ),
-      ),
+      userName: widget.post['user'] as String,
+      avatar: widget.post['avatar'] as String,
     );
   }
 
@@ -525,19 +544,15 @@ class _PostCardState extends State<_PostCard> {
     final catColor = _categoryColor(cat);
 
     return GestureDetector(
-      onTap: () => Navigator.push(
+      onTap: () => openCommunityPostDetail(
         context,
-        MaterialPageRoute(
-          builder: (_) => _PostDetailScreen(
-            post: widget.post,
-            isLiked: _isLiked,
-            likes: _likes,
-            onLikeChanged: (liked, count) => setState(() {
-              _isLiked = liked;
-              _likes = count;
-            }),
-          ),
-        ),
+        {...widget.post, 'isLiked': _isLiked, 'likes': _likes},
+        isLiked: _isLiked,
+        likes: _likes,
+        onLikeChanged: (liked, count) => setState(() {
+          _isLiked = liked;
+          _likes = count;
+        }),
       ),
       child: Container(
         margin: const EdgeInsets.only(bottom: 14),
@@ -1259,10 +1274,14 @@ class _CommunityUserProfileScreen extends StatelessWidget {
             ),
             const SizedBox(height: 18),
             Column(
-              children: const [
-                Icon(Icons.star, size: 26, color: Color(0xFFFFD229)),
-                SizedBox(height: 6),
-                Text(
+              children: [
+                Image.asset(
+                  'assets/images/profile_quick_saved.png',
+                  width: 28,
+                  height: 28,
+                ),
+                const SizedBox(height: 6),
+                const Text(
                   '저장 매장',
                   style: TextStyle(
                     fontSize: 13,

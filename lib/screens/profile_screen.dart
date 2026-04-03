@@ -1,7 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import '../services/business_store_service.dart';
+import '../services/profile_activity_service.dart';
 import '../widgets/mascot_profile_avatar.dart';
+import 'community_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -152,7 +155,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('취소'),
+            style: TextButton.styleFrom(
+              backgroundColor: const Color(0xFFF3F4F6),
+              foregroundColor: const Color(0xFF374151),
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            child: const Text(
+              '취소',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -287,22 +302,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _QuickMenu(
                     imagePath: 'assets/images/profile_quick_favorite.png',
                     label: '찜 매장',
-                    onTap: () {},
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => _LikedBusinessesScreen(
+                          nickname: _nickname,
+                          profileImage: _profileImage,
+                        ),
+                      ),
+                    ),
                   ),
                   _QuickMenu(
                     imagePath: 'assets/images/profile_quick_review.png',
                     label: '리뷰 내역',
-                    onTap: () {},
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => _MyReviewsScreen(
+                          nickname: _nickname,
+                          profileImage: _profileImage,
+                        ),
+                      ),
+                    ),
                   ),
                   _QuickMenu(
                     imagePath: 'assets/images/profile_quick_saved.png',
                     label: '저장 매장',
-                    onTap: () {},
+                    onTap: () =>
+                        openCommunityUserProfile(context, userName: _nickname),
                   ),
                   _QuickMenu(
                     imagePath: 'assets/images/profile_quick_recent.png',
                     label: '최근 본 글',
-                    onTap: () {},
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => _RecentViewedPostsScreen(
+                          nickname: _nickname,
+                          profileImage: _profileImage,
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -421,6 +461,477 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ],
     );
   }
+}
+
+class _LikedBusinessesScreen extends StatelessWidget {
+  final String nickname;
+  final File? profileImage;
+
+  const _LikedBusinessesScreen({
+    required this.nickname,
+    required this.profileImage,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final stores = BusinessStoreService.getLikedBusinesses();
+    return _ProfileListScaffold(
+      title: '찜 매장',
+      nickname: nickname,
+      profileImage: profileImage,
+      sectionImagePath: 'assets/images/profile_quick_favorite.png',
+      emptyText: '지도에서 하트를 누른 매장이 아직 없어요.',
+      isEmpty: stores.isEmpty,
+      child: ListView.separated(
+        padding: const EdgeInsets.fromLTRB(18, 20, 18, 24),
+        itemCount: stores.length,
+        separatorBuilder: (_, _) =>
+            const Divider(height: 24, color: Color(0xFFEAEAEA)),
+        itemBuilder: (context, index) => _ProfileStoreRow(store: stores[index]),
+      ),
+    );
+  }
+}
+
+class _MyReviewsScreen extends StatelessWidget {
+  final String nickname;
+  final File? profileImage;
+
+  const _MyReviewsScreen({required this.nickname, required this.profileImage});
+
+  @override
+  Widget build(BuildContext context) {
+    final reviews = ProfileActivityService.getMyReviews();
+    return _ProfileListScaffold(
+      title: '리뷰 내역',
+      nickname: nickname,
+      profileImage: profileImage,
+      sectionImagePath: 'assets/images/profile_quick_review.png',
+      emptyText: '아직 작성한 리뷰가 없어요.',
+      isEmpty: reviews.isEmpty,
+      child: ListView.separated(
+        padding: const EdgeInsets.fromLTRB(18, 20, 18, 24),
+        itemCount: reviews.length,
+        separatorBuilder: (_, _) =>
+            const Divider(height: 24, color: Color(0xFFEAEAEA)),
+        itemBuilder: (context, index) => _MyReviewCard(review: reviews[index]),
+      ),
+    );
+  }
+}
+
+class _RecentViewedPostsScreen extends StatelessWidget {
+  final String nickname;
+  final File? profileImage;
+
+  const _RecentViewedPostsScreen({
+    required this.nickname,
+    required this.profileImage,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final posts = ProfileActivityService.getRecentViewedPosts();
+    return _ProfileListScaffold(
+      title: '최근 본 글',
+      nickname: nickname,
+      profileImage: profileImage,
+      sectionImagePath: 'assets/images/profile_quick_recent.png',
+      emptyText: '아직 본 게시글이 없어요.',
+      isEmpty: posts.isEmpty,
+      child: ListView.separated(
+        padding: const EdgeInsets.fromLTRB(18, 20, 18, 24),
+        itemCount: posts.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 12),
+        itemBuilder: (context, index) => _RecentPostCard(post: posts[index]),
+      ),
+    );
+  }
+}
+
+class _ProfileListScaffold extends StatelessWidget {
+  final String title;
+  final String nickname;
+  final File? profileImage;
+  final String sectionImagePath;
+  final String emptyText;
+  final Widget child;
+  final bool isEmpty;
+
+  const _ProfileListScaffold({
+    required this.title,
+    required this.nickname,
+    required this.profileImage,
+    required this.sectionImagePath,
+    required this.emptyText,
+    required this.child,
+    required this.isEmpty,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFDCF9FF),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close, color: Color(0xFF1D1B20)),
+                  ),
+                  const Expanded(
+                    child: Center(
+                      child: Text(
+                        '프로필',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1D1B20),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 48),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            MascotProfileAvatar(
+              size: 78,
+              imageFile: profileImage,
+              backgroundColor: Colors.white.withValues(alpha: 0.7),
+              borderColor: const Color(0xFF4F4F4F),
+              borderWidth: 2,
+            ),
+            const SizedBox(height: 14),
+            Text(
+              nickname,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1D1B20),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Column(
+              children: [
+                Image.asset(sectionImagePath, width: 28, height: 28),
+                const SizedBox(height: 6),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF1D1B20),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            Expanded(
+              child: Container(
+                width: double.infinity,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                child: isEmpty
+                    ? Center(
+                        child: Text(
+                          emptyText,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF8C8C8C),
+                          ),
+                        ),
+                      )
+                    : child,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileStoreRow extends StatelessWidget {
+  final Map<String, dynamic> store;
+
+  const _ProfileStoreRow({required this.store});
+
+  @override
+  Widget build(BuildContext context) {
+    final rating = (store['rating'] as num?)?.toDouble() ?? 0;
+    final likes = (store['likes'] as int?) ?? 0;
+    final hours = store['hours']?.toString() ?? '영업 정보 없음';
+    final isVerified = store['isVerified'] == true;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            width: 72,
+            height: 72,
+            color: const Color(0xFF2550E6),
+            child: const Icon(Icons.cloud, color: Colors.white, size: 34),
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      store['name']?.toString() ?? '',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1D1B20),
+                      ),
+                    ),
+                  ),
+                  if (isVerified)
+                    const Icon(
+                      Icons.check_circle,
+                      size: 16,
+                      color: Color(0xFF43A047),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                store['address']?.toString() ?? '',
+                style: const TextStyle(
+                  fontSize: 12,
+                  height: 1.4,
+                  color: Color(0xFF767676),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 10,
+                runSpacing: 6,
+                children: [
+                  Text(
+                    hours,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF5F6368),
+                    ),
+                  ),
+                  Text(
+                    '리뷰 ${store['reviews'] ?? 0}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF5F6368),
+                    ),
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.star,
+                        size: 14,
+                        color: Color(0xFFFFD229),
+                      ),
+                      const SizedBox(width: 2),
+                      Text(
+                        rating.toStringAsFixed(1),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF5F6368),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.favorite,
+                        size: 14,
+                        color: Color(0xFFFF7B8F),
+                      ),
+                      const SizedBox(width: 2),
+                      Text(
+                        '$likes',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF5F6368),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MyReviewCard extends StatelessWidget {
+  final Map<String, dynamic> review;
+
+  const _MyReviewCard({required this.review});
+
+  @override
+  Widget build(BuildContext context) {
+    final rating = (review['rating'] as num?)?.toInt() ?? 0;
+    final createdAt = _formatDate(review['createdAt']?.toString());
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FCFF),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE6F1F4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  review['shopName']?.toString() ?? '세탁소',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1D1B20),
+                  ),
+                ),
+              ),
+              Text(
+                createdAt,
+                style: const TextStyle(fontSize: 12, color: Color(0xFF9E9E9E)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: List.generate(
+              5,
+              (index) => Icon(
+                index < rating ? Icons.star : Icons.star_border,
+                size: 18,
+                color: const Color(0xFFFFD233),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            review['content']?.toString() ?? '',
+            style: const TextStyle(
+              fontSize: 13,
+              height: 1.5,
+              color: Color(0xFF4B5563),
+            ),
+          ),
+          if ((review['imagePath']?.toString() ?? '').isNotEmpty) ...[
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.file(
+                File(review['imagePath'].toString()),
+                width: 84,
+                height: 84,
+                fit: BoxFit.cover,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _RecentPostCard extends StatelessWidget {
+  final Map<String, dynamic> post;
+
+  const _RecentPostCard({required this.post});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => openCommunityPostDetail(context, post),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF9FCFF),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE6F1F4)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              post['title']?.toString() ?? '',
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1D1B20),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              post['content']?.toString() ?? '',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 13,
+                height: 1.5,
+                color: Color(0xFF667085),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Text(
+                  post['user']?.toString() ?? '',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF4B5563),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  post['time']?.toString() ?? '',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF98A2B3),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _formatDate(String? iso) {
+  final parsed = DateTime.tryParse(iso ?? '');
+  if (parsed == null) return '방금 전';
+  final local = parsed.toLocal();
+  final month = local.month.toString().padLeft(2, '0');
+  final day = local.day.toString().padLeft(2, '0');
+  return '${local.year}.$month.$day';
 }
 
 // ─── 알림 설정 화면 ───────────────────────────────────────────
