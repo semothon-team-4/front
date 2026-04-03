@@ -19,6 +19,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
   bool _loading = true;
   int _totalCount = 0;
   Map<String, int> _gradeCount = {'A': 0, 'B': 0, 'C': 0, 'D': 0};
+  int _tagCount = 0;
   String _selectedCategory = '전체'; // 분류 필터
 
   @override
@@ -55,6 +56,14 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
       }
       final serverTotalCount =
           (closet["totalCount"] as num?)?.toInt() ?? items.length;
+      final serverTagCount =
+          (closet["tagCount"] as num?)?.toInt() ??
+          (serverTotalCount -
+                  ((serverCounts["A"] ?? 0) +
+                      (serverCounts["B"] ?? 0) +
+                      (serverCounts["C"] ?? 0) +
+                      (serverCounts["D"] ?? 0)))
+              .clamp(0, serverTotalCount);
 
       final detailedItems = <Map<String, dynamic>>[];
       for (final item in items) {
@@ -85,6 +94,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
         _items = detailedItems;
         _totalCount = serverTotalCount;
         _gradeCount = serverCounts;
+        _tagCount = serverTagCount;
         _loading = false;
       });
     } catch (e) {
@@ -93,6 +103,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
         _items = [];
         _totalCount = 0;
         _gradeCount = {"A": 0, "B": 0, "C": 0, "D": 0};
+        _tagCount = 0;
         _loading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
@@ -315,6 +326,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                       child: _WardrobeHeader(
                         totalCount: _totalCount,
                         gradeCount: gradeCount,
+                        tagCount: _tagCount,
                         onClose: () {
                           if (Navigator.of(context).canPop()) {
                             Navigator.of(context).pop();
@@ -532,11 +544,13 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
 class _WardrobeHeader extends StatelessWidget {
   final int totalCount;
   final Map<String, int> gradeCount;
+  final int tagCount;
   final VoidCallback onClose;
 
   const _WardrobeHeader({
     required this.totalCount,
     required this.gradeCount,
+    required this.tagCount,
     required this.onClose,
   });
 
@@ -565,14 +579,38 @@ class _WardrobeHeader extends StatelessWidget {
                   ),
                 ),
               ),
-              const Center(
-                child: Text(
-                  '내 옷장',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF1D1B20),
-                  ),
+              Center(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      '내 옷장',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF1D1B20),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE0E0E0),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        totalCount.toString(),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF4A4A4A),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -594,43 +632,46 @@ class _WardrobeHeader extends StatelessWidget {
                 ((availableWidth - (cardSize * cardCount)) / (cardCount - 1))
                     .clamp(minGap, 8.0);
 
+            final statConfigs = [
+              (
+                title: 'A등급',
+                count: gradeCount['A'] ?? 0,
+                gradient: const [Color(0xFFFF9EA8), Color(0xFFFFFFFF)],
+              ),
+              (
+                title: 'B등급',
+                count: gradeCount['B'] ?? 0,
+                gradient: const [Color(0xFFFFC39A), Color(0xFFFFFFFF)],
+              ),
+              (
+                title: 'C등급',
+                count: gradeCount['C'] ?? 0,
+                gradient: const [Color(0xFFFFE88F), Color(0xFFFFFFFF)],
+              ),
+              (
+                title: 'D등급',
+                count: gradeCount['D'] ?? 0,
+                gradient: const [Color(0xFFC9FF74), Color(0xFFFFFFFF)],
+              ),
+              (
+                title: 'TAG',
+                count: tagCount,
+                gradient: const [Color(0xFF8EDBF1), Color(0xFFFFFFFF)],
+              ),
+            ];
+
             return Row(
               children: [
-                _WardrobeStatCard(
-                  size: cardSize,
-                  count: totalCount,
-                  title: '옷',
-                  subtitle: null,
-                  icon: Icons.checkroom_outlined,
-                  textColor: const Color(0xFF2A2D34),
-                  gradientColors: const [Color(0xFF8ADAF0), Color(0xFFFFFFFF)],
-                ),
-                SizedBox(width: gap),
-                ...['A', 'B', 'C', 'D'].map((grade) {
-                  final config = switch (grade) {
-                    'A' => (
-                      title: 'A등급',
-                      gradient: const [Color(0xFFFF9EA8), Color(0xFFFFFFFF)],
-                    ),
-                    'B' => (
-                      title: 'B등급',
-                      gradient: const [Color(0xFFFFC39A), Color(0xFFFFFFFF)],
-                    ),
-                    'C' => (
-                      title: 'C등급',
-                      gradient: const [Color(0xFFFFE88F), Color(0xFFFFFFFF)],
-                    ),
-                    _ => (
-                      title: 'D등급',
-                      gradient: const [Color(0xFFC9FF74), Color(0xFFFFFFFF)],
-                    ),
-                  };
-
+                ...statConfigs.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final config = entry.value;
                   return Padding(
-                    padding: EdgeInsets.only(right: grade == 'D' ? 0 : gap),
+                    padding: EdgeInsets.only(
+                      right: index == statConfigs.length - 1 ? 0 : gap,
+                    ),
                     child: _WardrobeStatCard(
                       size: cardSize,
-                      count: gradeCount[grade] ?? 0,
+                      count: config.count,
                       title: config.title,
                       subtitle: null,
                       textColor: const Color(0xFF2A2D34),
@@ -815,7 +856,7 @@ class _ClothingCard extends StatelessWidget {
                               final isCareLabelOnly =
                                   grade == null || grade.isEmpty;
                               return Text(
-                                isCareLabelOnly ? '케어' : grade,
+                                isCareLabelOnly ? 'TAG' : grade,
                                 style: TextStyle(
                                   color: isCareLabelOnly
                                       ? const Color(0xFF1A39FF)
