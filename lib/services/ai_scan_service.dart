@@ -18,6 +18,11 @@ class AiScanService {
       path: '/predict/care-label',
       image: image,
     );
+    const encoder = JsonEncoder.withIndent('  ');
+    _printJsonToConsole(
+      'Care label scan response:',
+      encoder.convert(decoded),
+    );
     return {
       'id': 'care_${DateTime.now().millisecondsSinceEpoch}',
       'careLabels': _normalizeCareLabels(decoded),
@@ -183,6 +188,17 @@ class AiScanService {
     );
   }
 
+  static void _printJsonToConsole(String title, String jsonText) {
+    const chunkSize = 800;
+    print(title);
+    for (var i = 0; i < jsonText.length; i += chunkSize) {
+      final end = (i + chunkSize < jsonText.length)
+          ? i + chunkSize
+          : jsonText.length;
+      print(jsonText.substring(i, end));
+    }
+  }
+
   static List<Map<String, dynamic>> _normalizeCareLabels(
     Map<String, dynamic> decoded,
   ) {
@@ -207,6 +223,9 @@ class AiScanService {
                     fallback: '케어 정보',
                   ),
                   'icon': _asNullableString(map['icon'] ?? map['code']),
+                  'iconB64': _asNullableString(
+                    map['icon_b64'] ?? map['iconB64'],
+                  ),
                   'desc': _asNullableString(
                     map['desc'] ?? map['description'] ?? map['meaning'],
                   ),
@@ -215,6 +234,7 @@ class AiScanService {
               return {
                 'name': item.toString(),
                 'icon': null,
+                'iconB64': null,
                 'desc': null,
               };
             })

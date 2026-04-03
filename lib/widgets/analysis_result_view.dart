@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 
@@ -141,18 +142,14 @@ class AnalysisResultView extends StatelessWidget {
                               true
                           ? rawItem!['desc'] as String
                           : item.$2;
+                      final iconB64 = (rawItem?['iconB64'] as String?)?.trim();
                       return Column(
                         children: [
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             child: Row(
                               children: [
-                                Image.asset(
-                                  item.$1,
-                                  width: 26,
-                                  height: 26,
-                                  fit: BoxFit.contain,
-                                ),
+                                _CareLabelIcon(iconB64: iconB64),
                                 const SizedBox(width: 14),
                                 Expanded(
                                   child: Text(
@@ -328,6 +325,11 @@ class AnalysisResultView extends StatelessWidget {
     final String guideTip =
         (result['guideTip'] as String?) ??
         '의류의 형태를 유지하기 위해 통풍이 잘 되는 곳에 보관해 주세요.';
+    final needWash = result['needWash'] == true;
+    final needRepair = result['needRepair'] == true;
+    final guideStatusLabel = (!needWash && !needRepair)
+        ? '관리 불필요'
+        : (needRepair ? '수선 필요' : '세탁 권장');
 
     // 등급별 컬러링
     final gradeColor = switch (grade) {
@@ -518,45 +520,114 @@ class AnalysisResultView extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(22),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE1F5FE).withValues(alpha: 0.4),
-                  borderRadius: BorderRadius.circular(24),
+                  color: const Color(0xFFD7F3FB),
+                  borderRadius: BorderRadius.circular(28),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x33000000),
+                      blurRadius: 12,
+                      offset: Offset(0, 6),
+                    ),
+                  ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      '관리 가이드',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF263238),
+                    const Row(
+                      children: [
+                        Text('💡', style: TextStyle(fontSize: 24)),
+                        SizedBox(width: 8),
+                        Text(
+                          '관리 가이드',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF111111),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.95),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.check,
+                            size: 18,
+                            color: Color(0xFF10B981),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            guideStatusLabel,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF333333),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 12),
                     Text(
                       guideTitle,
                       style: const TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF455A64),
-                        height: 1.5,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF333333),
+                        height: 1.45,
                       ),
                     ),
                     const SizedBox(height: 16),
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE0E0E0).withValues(alpha: 0.7),
-                        borderRadius: BorderRadius.circular(16),
+                        color: Colors.white.withValues(alpha: 0.96),
+                        borderRadius: BorderRadius.circular(22),
                       ),
-                      child: Text(
-                        guideTip,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFF37474F),
-                          height: 1.5,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.favorite,
+                                size: 18,
+                                color: Color(0xFFFF5A5F),
+                              ),
+                              SizedBox(width: 6),
+                              Text(
+                                '보관 팁',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF333333),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            guideTip,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF444444),
+                              height: 1.5,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -845,6 +916,33 @@ class AnalysisResultView extends StatelessWidget {
         );
       },
     );
+  }
+}
+
+class _CareLabelIcon extends StatelessWidget {
+  final String? iconB64;
+
+  const _CareLabelIcon({
+    required this.iconB64,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final raw = iconB64;
+    if (raw != null && raw.isNotEmpty) {
+      try {
+        return Image.memory(
+          base64Decode(raw),
+          width: 26,
+          height: 26,
+          fit: BoxFit.contain,
+          errorBuilder: (_, _, _) => const SizedBox(width: 26, height: 26),
+        );
+      } catch (_) {
+        return const SizedBox(width: 26, height: 26);
+      }
+    }
+    return const SizedBox(width: 26, height: 26);
   }
 }
 
