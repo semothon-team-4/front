@@ -1152,7 +1152,6 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
   bool _isLoadingDetail = false;
   String? _detailError;
   Map<String, dynamic>? _shopDetail;
-  List<Map<String, dynamic>> _shopPrices = const [];
   List<Map<String, dynamic>> _shopReviews = const [];
   int _detailRequestId = 0;
 
@@ -1184,7 +1183,6 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
       _isLoadingDetail = true;
       _detailError = null;
       _shopDetail = null;
-      _shopPrices = const [];
       _shopReviews = const [];
     });
 
@@ -1198,7 +1196,6 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
       if (!mounted || requestId != _detailRequestId) return;
       setState(() {
         _shopDetail = results[0] as Map<String, dynamic>;
-        _shopPrices = List<Map<String, dynamic>>.from(results[1] as List);
         _shopReviews = List<Map<String, dynamic>>.from(results[2] as List);
       });
     } catch (e) {
@@ -1213,50 +1210,31 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
     }
   }
 
-  List<Map<String, String>> _priceItems(String type) {
-    if (type == '수선집') {
-      return const [
-        {'name': '기장 수선', 'price': '8,000원'},
-        {'name': '지퍼 교체', 'price': '15,000원'},
-        {'name': '단추 교체', 'price': '5,000원'},
-      ];
-    }
-
+  List<Map<String, String>> _priceItems() {
     return const [
-      {'name': '셔츠 다림질', 'price': '3,000원'},
-      {'name': '패딩 드라이 클리닝', 'price': '30,000원'},
-      {'name': '신발 얼룩 제거', 'price': '40,000원'},
+      {'name': '패딩 드라이 클리닝', 'price': '28,000원'},
+      {'name': '청바지 수선', 'price': '12,000원'},
+      {'name': '셔츠 다림질', 'price': '4,000원'},
+    ];
+  }
+
+  List<Map<String, String>> _jugongLaundryPriceItems() {
+    return const [
+      {'name': '패딩 드라이 클리닝', 'price': '26,000원'},
+      {'name': '교복 상하의 세탁', 'price': '9,000원'},
+      {'name': '이불 세탁', 'price': '18,000원'},
     ];
   }
 
   List<Map<String, String>> _resolvedPriceItems(Map<String, dynamic> business) {
-    if (_shopPrices.isNotEmpty) {
-      return _shopPrices
-          .map(
-            (item) => {
-              'name': item['category']?.toString() ?? '가격 정보',
-              'price': _formatPrice(item['price']),
-            },
-          )
-          .toList();
+    final name = business['name']?.toString().trim() ?? '';
+    final address = business['address']?.toString().trim() ?? '';
+
+    if (name == '주공세탁소' && address == '경기 수원시 영통구 영통동 964-8') {
+      return _jugongLaundryPriceItems();
     }
 
-    final raw = business['priceItems'];
-    if (raw is List && raw.isNotEmpty) {
-      return raw
-          .whereType<Map>()
-          .map(
-            (item) => {
-              'name': item['name']?.toString() ?? '',
-              'price': item['price']?.toString() ?? '',
-            },
-          )
-          .where(
-            (item) => item['name']!.isNotEmpty || item['price']!.isNotEmpty,
-          )
-          .toList();
-    }
-    return _priceItems(business['type'] as String);
+    return _priceItems();
   }
 
   List<Map<String, String>> _reviewItems(String businessName) {
@@ -1334,24 +1312,6 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
       return [_resolveImageUrl(imageUrl)];
     }
     return const [];
-  }
-
-  String _formatPrice(dynamic price) {
-    if (price == null) return '';
-    final number = price is num
-        ? price.toInt()
-        : int.tryParse(price.toString());
-    if (number == null) return price.toString();
-    final digits = number.toString();
-    final buffer = StringBuffer();
-    for (var i = 0; i < digits.length; i++) {
-      final reverseIndex = digits.length - i;
-      buffer.write(digits[i]);
-      if (reverseIndex > 1 && reverseIndex % 3 == 1) {
-        buffer.write(',');
-      }
-    }
-    return '${buffer.toString()}원';
   }
 
   String _firstImage(Map<String, dynamic> item) {
@@ -1596,6 +1556,10 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
               const SizedBox(height: 10),
               ...items.asMap().entries.map((entry) {
                 final item = entry.value;
+                final rank = entry.key + 1;
+                final rankColor = rank == 1
+                    ? const Color(0xFF335CFF)
+                    : const Color(0xFF6BB8D6);
                 return Container(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   decoration: BoxDecoration(
@@ -1609,6 +1573,24 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
                   ),
                   child: Row(
                     children: [
+                      Container(
+                        width: 28,
+                        height: 28,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: rankColor,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          '$rank',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           item['name']!,
