@@ -10,7 +10,6 @@ import '../services/business_store_service.dart';
 import '../services/image_service.dart';
 import '../services/profile_activity_service.dart';
 import '../services/shop_service.dart';
-import 'community_screen.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -512,7 +511,6 @@ class _MapScreenState extends State<MapScreen> {
                     await _refreshMapMarkers();
                   }
                 },
-                onCommunity: () => showCommunityWriteSheet(context),
               ),
             ),
 
@@ -1136,7 +1134,6 @@ class _BusinessCompactCard extends StatefulWidget {
   final VoidCallback onClose;
   final VoidCallback onLike;
   final VoidCallback onWriteReview;
-  final VoidCallback onCommunity;
 
   const _BusinessCompactCard({
     super.key,
@@ -1148,7 +1145,6 @@ class _BusinessCompactCard extends StatefulWidget {
     required this.onClose,
     required this.onLike,
     required this.onWriteReview,
-    required this.onCommunity,
   });
 
   @override
@@ -2139,12 +2135,6 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
                               label: '리뷰 쓰기',
                               icon: Icons.add,
                               onTap: widget.onWriteReview,
-                            ),
-                            const SizedBox(height: 10),
-                            _RoundActionButton(
-                              label: '커뮤니티 공유',
-                              icon: Icons.share,
-                              onTap: widget.onCommunity,
                             ),
                           ],
                         ),
