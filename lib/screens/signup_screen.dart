@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
 import '../widgets/clothes_up_logo.dart';
-import '../widgets/seal_mascot.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -102,16 +101,22 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ),
                 ),
               ),
-              SizedBox(height: screenWidth * 0.04),
+              SizedBox(height: screenWidth * 0.05),
+              Center(child: ClothesUpLogo(width: screenWidth * 0.34)),
+              const SizedBox(height: 24),
               Center(
-                child: ClothesUpLogo(width: screenWidth * 0.36),
-              ),
-              const SizedBox(height: 10),
-              const Center(
-                child: SealMascot(
-                  size: 92,
-                  helpText: '반가워요!\n회원가입하고 클로즈업을 시작해보세요.',
-                  imagePath: 'assets/images/profile_default.png',
+                child: SizedBox(
+                  width: 132,
+                  height: 132,
+                  child: ClipOval(
+                    child: Transform.scale(
+                      scale: 1.4,
+                      child: Image.asset(
+                        'assets/images/signup_mascot.png',
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 22),

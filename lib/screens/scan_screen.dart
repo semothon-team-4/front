@@ -14,8 +14,7 @@ class CareLabelScanScreen extends StatefulWidget {
   State<CareLabelScanScreen> createState() => _CareLabelScanScreenState();
 }
 
-class _CareLabelScanScreenState extends State<CareLabelScanScreen>
-    with SingleTickerProviderStateMixin {
+class _CareLabelScanScreenState extends State<CareLabelScanScreen> with SingleTickerProviderStateMixin {
   File? _scannedImage;
   Map<String, dynamic>? _analysisResult;
   bool _isAnalyzing = false;
@@ -385,8 +384,7 @@ class ClothingScanScreen extends StatefulWidget {
   State<ClothingScanScreen> createState() => _ClothingScanScreenState();
 }
 
-class _ClothingScanScreenState extends State<ClothingScanScreen>
-    with SingleTickerProviderStateMixin {
+class _ClothingScanScreenState extends State<ClothingScanScreen> with SingleTickerProviderStateMixin {
   File? _scannedImage;
   Map<String, dynamic>? _analysisResult;
   bool _isAnalyzing = false;
@@ -666,8 +664,7 @@ class _ScanCompleteCard extends StatelessWidget {
   final bool isCareLabel;
   final VoidCallback onViewResult;
 
-  const _ScanCompleteCard(
-      {required this.isCareLabel, required this.onViewResult});
+  const _ScanCompleteCard({required this.isCareLabel, required this.onViewResult});
 
   @override
   Widget build(BuildContext context) {
@@ -681,7 +678,7 @@ class _ScanCompleteCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 36,
+            width: 40,
             height: 4,
             margin: const EdgeInsets.only(bottom: 20),
             decoration: BoxDecoration(
@@ -695,7 +692,7 @@ class _ScanCompleteCard extends StatelessWidget {
                 width: 52,
                 height: 52,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF8FEAFD).withOpacity(0.2),
+                  color: const Color(0xFF8FEAFD).withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -725,23 +722,14 @@ class _ScanCompleteCard extends StatelessWidget {
             child: ElevatedButton(
               onPressed: onViewResult,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF8FEAFD),
-                foregroundColor: const Color(0xFF1D1B20),
-                elevation: 0,
+                backgroundColor: const Color(0xFF1A39FF),
+                foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14)),
               ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text('결과 확인하기',
-                      style:
-                          TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                  SizedBox(width: 6),
-                  Icon(Icons.arrow_forward, size: 16),
-                ],
-              ),
+              child: const Text('결과 확인하기',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
             ),
           ),
         ],
@@ -762,18 +750,10 @@ class _Corner extends StatelessWidget {
       height: 20,
       decoration: BoxDecoration(
         border: Border(
-          top: top
-              ? const BorderSide(color: Color(0xFF8FEAFD), width: 3)
-              : BorderSide.none,
-          bottom: !top
-              ? const BorderSide(color: Color(0xFF8FEAFD), width: 3)
-              : BorderSide.none,
-          left: left
-              ? const BorderSide(color: Color(0xFF8FEAFD), width: 3)
-              : BorderSide.none,
-          right: !left
-              ? const BorderSide(color: Color(0xFF8FEAFD), width: 3)
-              : BorderSide.none,
+          top: top ? const BorderSide(color: Color(0xFF8FEAFD), width: 3) : BorderSide.none,
+          bottom: !top ? const BorderSide(color: Color(0xFF8FEAFD), width: 3) : BorderSide.none,
+          left: left ? const BorderSide(color: Color(0xFF8FEAFD), width: 3) : BorderSide.none,
+          right: !left ? const BorderSide(color: Color(0xFF8FEAFD), width: 3) : BorderSide.none,
         ),
       ),
     );

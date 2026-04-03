@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../widgets/analysis_result_view.dart';
 import 'community_screen.dart';
@@ -123,141 +124,231 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFF),
+      backgroundColor: Colors.white,
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : filtered.isEmpty
           ? const Center(
-            child: Text(
-              '옷장이 비어있어요. 멋진 옷을 스캔해보세요!',
-              style: TextStyle(color: Color(0xFFB0BEC5)),
-            ),
-          )
-          : CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Container(
-                    color: Colors.white,
-                    padding: const EdgeInsets.fromLTRB(20, 60, 20, 24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          '내 옷장',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1D1B20),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            _ItemCountBox(label: '전체', count: _items.length),
-                            _ItemCountBox(label: '좋음(A)', count: gradeCount['A'] ?? 0),
-                            _ItemCountBox(label: '주의(C)', count: gradeCount['C'] ?? 0),
-                            _ItemCountBox(label: '위험(D)', count: gradeCount['D'] ?? 0),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                if ((gradeCount['D'] ?? 0) > 0)
+              child: CircularProgressIndicator(color: Color(0xFF1A39FF)),
+            )
+          : SafeArea(
+              bottom: false,
+              child: CustomScrollView(
+                slivers: [
+                  // ─── 헤더 ───────────────────────────────────────────
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFEBEE),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFFFFCDD2)),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.warning_amber_rounded, color: Color(0xFFE53935)),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                '세심한 관리가 필요한 옷이 ${gradeCount['D']}벌 있어요.',
-                                style: const TextStyle(
-                                  color: Color(0xFFC62828),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                      child: _WardrobeHeader(
+                        totalCount: _items.length,
+                        gradeCount: gradeCount,
+                        onClose: () {
+                          if (Navigator.of(context).canPop()) {
+                            Navigator.of(context).pop();
+                          } else {
+                            widget.onNavigate?.call(0);
+                          }
+                        },
                       ),
                     ),
                   ),
 
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: ['전체', '상의', '하의', '아우터', '기타'].map((cat) {
-                          final isActive = _selectedCategory == cat;
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: ChoiceChip(
-                              label: Text(cat),
-                              selected: isActive,
-                              onSelected: (_) => setState(() => _selectedCategory = cat),
-                              backgroundColor: Colors.white,
-                              selectedColor: const Color(0xFF8FEAFD),
-                              labelStyle: TextStyle(
-                                color: isActive ? const Color(0xFF1D1B20) : const Color(0xFF9E9E9E),
-                                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                  // ─── 경고 알림 ──────────────────────────────────────
+                  if ((gradeCount['D'] ?? 0) > 0)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF3E0),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: const Color(0xFFFFCC02)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.warning_amber_rounded,
+                                color: Color(0xFFFB8C00),
+                                size: 20,
                               ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                                side: BorderSide(
-                                  color: isActive ? Colors.transparent : const Color(0xFFEEEEEE),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  '관리가 필요한 의류가 ${gradeCount['D']}벌 있어요',
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFFE65100),
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  // ─── 카테고리 필터 ───────────────────────────────────
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          const Text(
+                            '분류',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF1D1B20),
                             ),
-                          );
-                        }).toList(),
+                          ),
+                          GestureDetector(
+                            onTap: () async {
+                              final cats = ['전체', '상의', '하의', '아우터', '기타'];
+                              final picked = await showModalBottomSheet<String>(
+                                context: context,
+                                shape: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.vertical(
+                                    top: Radius.circular(20),
+                                  ),
+                                ),
+                                builder: (_) => Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const SizedBox(height: 12),
+                                    Container(
+                                      width: 36,
+                                      height: 4,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFE0E0E0),
+                                        borderRadius: BorderRadius.circular(2),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    ...cats.map(
+                                      (c) => ListTile(
+                                        title: Text(
+                                          c,
+                                          style: const TextStyle(fontSize: 15),
+                                        ),
+                                        trailing: _selectedCategory == c
+                                            ? const Icon(
+                                                Icons.check,
+                                                color: Color(0xFF1A39FF),
+                                              )
+                                            : null,
+                                        onTap: () => Navigator.pop(context, c),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                  ],
+                                ),
+                              );
+                              if (picked != null) {
+                                setState(() => _selectedCategory = picked);
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF79D5F1),
+                                borderRadius: BorderRadius.circular(999),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.12),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    _selectedCategory,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      color: Color(0xFF1D1B20),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  const Icon(
+                                    Icons.keyboard_arrow_down,
+                                    size: 18,
+                                    color: Color(0xFF1D1B20),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                ),
 
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 90),
-                  sliver: filtered.isEmpty
-                      ? const SliverFillRemaining(
-                        child: Center(child: Text('해당 카테고리에 옷이 없어요.')),
-                      )
-                      : SliverGrid(
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          mainAxisSpacing: 16,
-                          crossAxisSpacing: 16,
-                          childAspectRatio: 0.78,
-                        ),
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            final it = filtered[index];
-                            return _ClothingItemCard(
-                              item: it,
-                              onTap: () => _showDetailSheet(it),
-                              onShare: () => _openShareSheet(it),
-                              gradeColor: _gradeColor(it['grade'] as String),
-                            );
-                          },
-                          childCount: filtered.length,
-                        ),
-                      ),
-                ),
-              ],
+                  // ─── 그리드 목록 ────────────────────────────────────
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 90),
+                    sliver: filtered.isEmpty
+                        ? SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 60),
+                              child: Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: const [
+                                    Icon(
+                                      Icons.checkroom_outlined,
+                                      size: 52,
+                                      color: Color(0xFFCFD8DC),
+                                    ),
+                                    SizedBox(height: 12),
+                                    Text(
+                                      '등록된 의류가 없어요',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Color(0xFF90A4AE),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          )
+                        : SliverGrid(
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              mainAxisSpacing: 16,
+                              crossAxisSpacing: 16,
+                              childAspectRatio: 0.78,
+                            ),
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) {
+                                final it = filtered[index];
+                                return _ClothingItemCard(
+                                  item: it,
+                                  onTap: () => _showDetailSheet(it),
+                                  onShare: () => _openShareSheet(it),
+                                  gradeColor: _getGradeColor(it['grade'] as String),
+                                );
+                              },
+                              childCount: filtered.length,
+                            ),
+                          ),
+                  ),
+                ],
+              ),
             ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {},
@@ -282,7 +373,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
     );
   }
 
-  Color _gradeColor(String grade) {
+  Color _getGradeColor(String grade) {
     switch (grade) {
       case 'A': return const Color(0xFF4CAF50);
       case 'B': return const Color(0xFF8BC34A);
@@ -293,22 +384,192 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
   }
 }
 
-class _ItemCountBox extends StatelessWidget {
-  final String label;
-  final int count;
-  const _ItemCountBox({required this.label, required this.count});
+// ─── 헬퍼 위젯 및 기타 부가 클래스들 ───────────────────────────────
+
+class _WardrobeHeader extends StatelessWidget {
+  final int totalCount;
+  final Map<String, int> gradeCount;
+  final VoidCallback onClose;
+
+  const _WardrobeHeader({
+    required this.totalCount,
+    required this.gradeCount,
+    required this.onClose,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          count.toString(),
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1D1B20)),
+        SizedBox(
+          height: 48,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: InkWell(
+                  onTap: onClose,
+                  borderRadius: BorderRadius.circular(24),
+                  child: const Padding(
+                    padding: EdgeInsets.all(8),
+                    child: Icon(
+                      Icons.close_rounded,
+                      size: 32,
+                      color: Color(0xFF1D1B20),
+                    ),
+                  ),
+                ),
+              ),
+              const Center(
+                child: Text(
+                  '내 옷장',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF1D1B20),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 4),
-        Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF9E9E9E))),
+        const SizedBox(height: 18),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            const cardCount = 5;
+            const preferredCardSize = 71.0;
+            const minGap = 2.0;
+
+            final availableWidth = constraints.maxWidth;
+            final cardSize = math.min(
+              preferredCardSize,
+              (availableWidth - (minGap * (cardCount - 1))) / cardCount,
+            );
+            final gap =
+                ((availableWidth - (cardSize * cardCount)) / (cardCount - 1))
+                    .clamp(minGap, 8.0);
+
+            return Row(
+              children: [
+                _WardrobeStatCard(
+                  size: cardSize,
+                  count: totalCount,
+                  title: '옷',
+                  icon: Icons.checkroom_outlined,
+                  textColor: const Color(0xFF2A2D34),
+                  gradientColors: const [Color(0xFF8ADAF0), Color(0xFFFFFFFF)],
+                ),
+                SizedBox(width: gap),
+                ...['A', 'B', 'C', 'D'].map((grade) {
+                  final config = switch (grade) {
+                    'A' => (
+                      title: 'A등급',
+                      gradient: const [Color(0xFFFF9EA8), Color(0xFFFFFFFF)],
+                    ),
+                    'B' => (
+                      title: 'B등급',
+                      gradient: const [Color(0xFFFFC39A), Color(0xFFFFFFFF)],
+                    ),
+                    'C' => (
+                      title: 'C등급',
+                      gradient: const [Color(0xFFFFE88F), Color(0xFFFFFFFF)],
+                    ),
+                    _ => (
+                      title: 'D등급',
+                      gradient: const [Color(0xFFC9FF74), Color(0xFFFFFFFF)],
+                    ),
+                  };
+
+                  return Padding(
+                    padding: EdgeInsets.only(right: grade == 'D' ? 0 : gap),
+                    child: _WardrobeStatCard(
+                      size: cardSize,
+                      count: gradeCount[grade] ?? 0,
+                      title: config.title,
+                      textColor: const Color(0xFF2A2D34),
+                      gradientColors: config.gradient,
+                    ),
+                  );
+                }),
+              ],
+            );
+          },
+        ),
       ],
+    );
+  }
+}
+
+class _WardrobeStatCard extends StatelessWidget {
+  final double size;
+  final int count;
+  final String title;
+  final IconData? icon;
+  final Color textColor;
+  final List<Color> gradientColors;
+
+  const _WardrobeStatCard({
+    required this.size,
+    required this.count,
+    required this.title,
+    this.icon,
+    required this.textColor,
+    required this.gradientColors,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(22),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: gradientColors,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.18),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.9),
+            width: 1.2,
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              '$count',
+              style: TextStyle(
+                fontSize: size * 0.24,
+                fontWeight: FontWeight.w800,
+                color: textColor,
+              ),
+            ),
+            SizedBox(height: size * 0.055),
+            if (icon != null)
+              Icon(icon, size: size * 0.36, color: textColor)
+            else
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: size * 0.13,
+                  fontWeight: FontWeight.w700,
+                  color: textColor,
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -474,7 +735,6 @@ class _ClothingItemCard extends StatelessWidget {
   }
 }
 
-// ── 의류 공유 바텀시트 ──────────────────────────────────────────
 class SharePostSheet extends StatelessWidget {
   final String title;
   final String category;
@@ -513,11 +773,6 @@ class SharePostSheet extends StatelessWidget {
             '커뮤니티에 공유하기',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1D1B20)),
           ),
-          const SizedBox(height: 12),
-          const Text(
-            '이 옷의 분석 결과를 게시글로 바로 작성합니다.',
-            style: TextStyle(fontSize: 14, color: Color(0xFF78909C)),
-          ),
           const SizedBox(height: 24),
           Container(
             padding: const EdgeInsets.all(16),
@@ -535,17 +790,14 @@ class SharePostSheet extends StatelessWidget {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Center(
-                    child: Icon(Icons.checkroom, color: const Color(0xFF1A39FF).withValues(alpha: 0.5)),
-                  ),
+                  child: const Center(child: Icon(Icons.checkroom, color: Color(0xFF1A39FF))),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                      const SizedBox(height: 4),
+                      Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
                       Text('$category · $grade등급', style: const TextStyle(color: Color(0xFF90A4AE), fontSize: 12)),
                     ],
                   ),
@@ -566,9 +818,8 @@ class SharePostSheet extends StatelessWidget {
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                elevation: 0,
               ),
-              child: const Text('게시글 작성하러 가기', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+              child: const Text('게시글 작성하러 가기', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ),
         ],
