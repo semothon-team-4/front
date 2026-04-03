@@ -654,14 +654,19 @@ class _LikeIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Opacity(
-      opacity: isActive ? 1.0 : 0.35,
-      child: Image.asset(
+    if (isActive) {
+      return Image.asset(
         'assets/images/profile_quick_interest_post.png',
         width: size,
         height: size,
         fit: BoxFit.contain,
-      ),
+      );
+    }
+
+    return Icon(
+      Icons.thumb_up_alt_outlined,
+      size: size,
+      color: const Color(0xFFB0BEC5),
     );
   }
 }
