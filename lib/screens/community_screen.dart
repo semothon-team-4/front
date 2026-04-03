@@ -444,11 +444,7 @@ class _CommunityScreenState extends State<CommunityScreen>
                         const SizedBox(width: 8),
                         Row(
                           children: [
-                            const Icon(
-                              Icons.favorite,
-                              size: 12,
-                              color: Color(0xFFFF6161),
-                            ),
+                            _LikeIcon(isActive: true, size: 12),
                             const SizedBox(width: 3),
                             Text(
                               '${p['likes']}',
@@ -491,6 +487,26 @@ class _CommunityScreenState extends State<CommunityScreen>
         elevation: 0,
         icon: const Icon(Icons.edit),
         label: const Text('글쓰기', style: TextStyle(fontWeight: FontWeight.w600)),
+      ),
+    );
+  }
+}
+
+class _LikeIcon extends StatelessWidget {
+  final bool isActive;
+  final double size;
+
+  const _LikeIcon({super.key, required this.isActive, required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return Opacity(
+      opacity: isActive ? 1.0 : 0.35,
+      child: Image.asset(
+        'assets/images/profile_quick_interest_post.png',
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
       ),
     );
   }
@@ -671,13 +687,10 @@ class _PostCardState extends State<_PostCard> {
                       children: [
                         AnimatedSwitcher(
                           duration: const Duration(milliseconds: 200),
-                          child: Icon(
-                            _isLiked ? Icons.favorite : Icons.favorite_border,
+                          child: _LikeIcon(
                             key: ValueKey(_isLiked),
+                            isActive: _isLiked,
                             size: 19,
-                            color: _isLiked
-                                ? Colors.red
-                                : const Color(0xFFB0BEC5),
                           ),
                         ),
                         const SizedBox(width: 4),
@@ -686,7 +699,7 @@ class _PostCardState extends State<_PostCard> {
                           style: TextStyle(
                             fontSize: 13,
                             color: _isLiked
-                                ? Colors.red
+                                ? const Color(0xFF1A39FF)
                                 : const Color(0xFF90A4AE),
                             fontWeight: FontWeight.w500,
                           ),
@@ -1044,15 +1057,10 @@ class _PostDetailScreenState extends State<_PostDetailScreen> {
                           children: [
                             AnimatedSwitcher(
                               duration: const Duration(milliseconds: 200),
-                              child: Icon(
-                                _isLiked
-                                    ? Icons.favorite
-                                    : Icons.favorite_border,
+                              child: _LikeIcon(
                                 key: ValueKey(_isLiked),
+                                isActive: _isLiked,
                                 size: 20,
-                                color: _isLiked
-                                    ? Colors.red
-                                    : const Color(0xFFB0BEC5),
                               ),
                             ),
                             const SizedBox(width: 4),
@@ -1061,7 +1069,7 @@ class _PostDetailScreenState extends State<_PostDetailScreen> {
                               style: TextStyle(
                                 fontSize: 14,
                                 color: _isLiked
-                                    ? Colors.red
+                                    ? const Color(0xFF1A39FF)
                                     : const Color(0xFF90A4AE),
                               ),
                             ),
@@ -1390,11 +1398,7 @@ class _SavedBusinessRow extends StatelessWidget {
               const SizedBox(height: 6),
               Row(
                 children: [
-                  Icon(
-                    Icons.favorite,
-                    size: 14,
-                    color: Colors.red.withValues(alpha: 0.7),
-                  ),
+                  _LikeIcon(isActive: true, size: 14),
                   const SizedBox(width: 4),
                   Text(
                     '$likes',

@@ -20,7 +20,10 @@ class ImageService {
   }
 
   /// 이미지를 앱 로컬 저장소에 저장하고 경로를 반환합니다.
-  static Future<String?> saveImageLocally(File imageFile, String fileName) async {
+  static Future<String?> saveImageLocally(
+    File imageFile,
+    String fileName,
+  ) async {
     try {
       final appDir = await getApplicationDocumentsDirectory();
       final savedPath = '${appDir.path}/$fileName';
@@ -32,7 +35,10 @@ class ImageService {
   }
 
   /// Uint8List를 파일로 저장합니다 (결과 이미지 캡처용).
-  static Future<String?> saveBytesLocally(Uint8List bytes, String fileName) async {
+  static Future<String?> saveBytesLocally(
+    Uint8List bytes,
+    String fileName,
+  ) async {
     try {
       final appDir = await getApplicationDocumentsDirectory();
       final savedPath = '${appDir.path}/$fileName';
@@ -63,8 +69,7 @@ class ImageService {
 
   /// 소스 선택 바텀시트를 표시하고 이미지를 반환합니다.
   static Future<File?> showPickerSheet(BuildContext context) async {
-    File? result;
-    await showModalBottomSheet(
+    final source = await showModalBottomSheet<ImageSource>(
       context: context,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -76,7 +81,8 @@ class ImageService {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 40, height: 4,
+                width: 40,
+                height: 4,
                 margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
                   color: Colors.grey[300],
@@ -85,35 +91,38 @@ class ImageService {
               ),
               ListTile(
                 leading: Container(
-                  width: 42, height: 42,
+                  width: 42,
+                  height: 42,
                   decoration: BoxDecoration(
                     color: const Color(0xFFE3F2FD),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(Icons.camera_alt, color: Color(0xFF1565C0)),
                 ),
-                title: const Text('카메라로 촬영',
-                    style: TextStyle(fontWeight: FontWeight.w500)),
-                onTap: () async {
-                  Navigator.pop(context);
-                  result = await pickImage(ImageSource.camera);
-                },
+                title: const Text(
+                  '카메라로 촬영',
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
+                onTap: () => Navigator.pop(context, ImageSource.camera),
               ),
               ListTile(
                 leading: Container(
-                  width: 42, height: 42,
+                  width: 42,
+                  height: 42,
                   decoration: BoxDecoration(
                     color: const Color(0xFFE8F5E9),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.photo_library, color: Color(0xFF43A047)),
+                  child: const Icon(
+                    Icons.photo_library,
+                    color: Color(0xFF43A047),
+                  ),
                 ),
-                title: const Text('갤러리에서 선택',
-                    style: TextStyle(fontWeight: FontWeight.w500)),
-                onTap: () async {
-                  Navigator.pop(context);
-                  result = await pickImage(ImageSource.gallery);
-                },
+                title: const Text(
+                  '갤러리에서 선택',
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
+                onTap: () => Navigator.pop(context, ImageSource.gallery),
               ),
               const SizedBox(height: 8),
             ],
@@ -121,6 +130,8 @@ class ImageService {
         ),
       ),
     );
-    return result;
+
+    if (source == null) return null;
+    return pickImage(source);
   }
 }

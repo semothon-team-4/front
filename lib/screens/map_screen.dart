@@ -1,8 +1,11 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
+import '../services/api_config.dart';
+import '../services/auth_service.dart';
 import '../services/business_store_service.dart';
 import '../services/image_service.dart';
 import '../services/profile_activity_service.dart';
@@ -174,11 +177,16 @@ class _MapScreenState extends State<MapScreen> {
           'address': shop['address'] ?? '',
           'phone':
               (shop['phone'] as String?) ??
+              (shop['phoneNumber'] as String?) ??
+              (shop['contactNumber'] as String?) ??
+              (shop['tel'] as String?) ??
               (shop['telephone'] as String?) ??
               '',
           'website':
               (shop['website'] as String?) ??
               (shop['homepageUrl'] as String?) ??
+              (shop['url'] as String?) ??
+              (shop['link'] as String?) ??
               (shop['siteUrl'] as String?) ??
               '',
           'addressDetail':
@@ -885,13 +893,15 @@ class _BusinessThumbnail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final url = imageUrl?.trim() ?? '';
+    final raw = imageUrl?.trim() ?? '';
+    final url = _resolveUrl(raw);
     if (url.isEmpty) {
       return _BusinessThumbnailFallback();
     }
 
     return Image.network(
       url,
+      headers: _headersForUrl(url),
       fit: BoxFit.cover,
       errorBuilder: (context, error, stackTrace) =>
           const _BusinessThumbnailFallback(),
@@ -915,6 +925,29 @@ class _BusinessThumbnail extends StatelessWidget {
         );
       },
     );
+  }
+
+  static Map<String, String>? _headersForUrl(String url) {
+    final base = Uri.tryParse(ApiConfig.baseUrl);
+    final target = Uri.tryParse(url);
+    final token = AuthService.accessToken;
+    if (base == null || target == null || token == null || token.isEmpty) {
+      return null;
+    }
+
+    if (base.host == target.host) {
+      return {'Authorization': 'Bearer $token'};
+    }
+    return null;
+  }
+
+  static String _resolveUrl(String raw) {
+    if (raw.isEmpty) return '';
+    final uri = Uri.tryParse(raw);
+    if (uri != null && uri.hasScheme) return raw;
+    if (raw.startsWith('/')) return '${ApiConfig.baseUrl}$raw';
+    if (!raw.contains('/')) return '${ApiConfig.baseUrl}/images/$raw';
+    return '${ApiConfig.baseUrl}/$raw';
   }
 }
 
@@ -1252,9 +1285,7 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
           .map(
             (item) => {
               'user': item['nickname']?.toString() ?? '사용자',
-              'badge': (item['receiptId'] ?? item['verifiedReceipt']) != null
-                  ? '영수증 인증 완료!'
-                  : '',
+              'badge': _isReceiptVerifiedReview(item) ? '영수증 인증 완료!' : '',
               'text': item['content']?.toString() ?? '',
               'imageUrl': _firstImage(item),
               'rating': item['rating']?.toString() ?? '',
@@ -1294,10 +1325,13 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
 
     final raw = business['photoUrls'];
     if (raw is List && raw.isNotEmpty) {
-      return raw.map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
+      return raw
+          .map((e) => _resolveImageUrl(e))
+          .where((e) => e.isNotEmpty)
+          .toList();
     }
     if ((imageUrl ?? '').isNotEmpty) {
-      return [imageUrl!];
+      return [_resolveImageUrl(imageUrl)];
     }
     return const [];
   }
@@ -1323,16 +1357,85 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
   String _firstImage(Map<String, dynamic> item) {
     final images = _imageList(item);
     if (images.isNotEmpty) return images.first;
-    return item['imageUrl']?.toString() ?? '';
+    return _resolveImageUrl(item['imageUrl'] ?? item['imageurl']);
   }
 
   List<String> _imageList(Map<String, dynamic> item) {
-    final raw = item['images'];
+    final raw =
+        item['images'] ??
+        item['imageUrls'] ??
+        item['imageurls'] ??
+        item['reviewImages'] ??
+        item['photos'] ??
+        item['files'];
     if (raw is List) {
-      return raw.map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
+      return raw
+          .map((e) {
+            if (e is Map) {
+              return _resolveImageUrl(
+                e['imageUrl'] ??
+                    e['imageurl'] ??
+                    e['url'] ??
+                    e['path'] ??
+                    e['fileUrl'] ??
+                    e['imagePath'],
+              );
+            }
+            return _resolveImageUrl(e);
+          })
+          .where((e) => e.isNotEmpty)
+          .toList();
     }
-    final single = item['imageUrl']?.toString() ?? '';
+
+    if (raw is String) {
+      final text = raw.trim();
+      if (text.isNotEmpty) {
+        if (text.startsWith('[') && text.endsWith(']')) {
+          try {
+            final decoded = jsonDecode(text);
+            if (decoded is List) {
+              return decoded
+                  .map((e) => _resolveImageUrl(e))
+                  .where((e) => e.isNotEmpty)
+                  .toList();
+            }
+          } catch (_) {}
+        }
+
+        final splitImages = text
+            .split(',')
+            .map((e) => _resolveImageUrl(e))
+            .where((e) => e.isNotEmpty)
+            .toList();
+        if (splitImages.isNotEmpty) return splitImages;
+      }
+    }
+
+    final single = _resolveImageUrl(item['imageUrl'] ?? item['imageurl']);
     return single.isEmpty ? const [] : [single];
+  }
+
+  bool _isReceiptVerifiedReview(Map<String, dynamic> item) {
+    final receipt = item['receipt'];
+    return item['receiptId'] != null ||
+        item['verifiedReceipt'] != null ||
+        item['isReceiptVerified'] == true ||
+        item['receiptVerified'] == true ||
+        item['hasReceipt'] == true ||
+        item['receiptImage'] != null ||
+        item['receiptImageUrl'] != null ||
+        (receipt is Map &&
+            (receipt['id'] != null || receipt['imageUrl'] != null));
+  }
+
+  String _resolveImageUrl(dynamic value) {
+    final raw = value?.toString().trim() ?? '';
+    if (raw.isEmpty) return '';
+    final uri = Uri.tryParse(raw);
+    if (uri != null && uri.hasScheme) return raw;
+    if (raw.startsWith('/')) return '${ApiConfig.baseUrl}$raw';
+    if (!raw.contains('/')) return '${ApiConfig.baseUrl}/images/$raw';
+    return '${ApiConfig.baseUrl}/$raw';
   }
 
   String _resolveText(List<dynamic> values, String fallback) {
@@ -1445,10 +1548,8 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
     final resolvedAddress = addressDetail.isNotEmpty
         ? '$address $addressDetail'
         : address;
-    final resolvedPhone = phone.isNotEmpty ? phone : '031-205-8059';
-    final resolvedWebsite = website.isNotEmpty
-        ? website
-        : 'https://www.cleantopia.com/kr/main.do';
+    final resolvedPhone = phone.isNotEmpty ? phone : '전화번호 정보 없음';
+    final resolvedWebsite = website.isNotEmpty ? website : '링크 정보 없음';
 
     return Column(
       children: [
@@ -1698,8 +1799,7 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
                   ],
                 ),
                 const SizedBox(height: 10),
-                if ((item['imageUrl'] ?? '').isNotEmpty ||
-                    item['user'] == 'rlaalswn1234') ...[
+                if ((item['imageUrl'] ?? '').isNotEmpty) ...[
                   Row(
                     children: [
                       ClipRRect(
@@ -1770,14 +1870,25 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
     ], '');
     final phone = _resolveText([
       _shopDetail?['phone'],
+      _shopDetail?['phoneNumber'],
+      _shopDetail?['contactNumber'],
+      _shopDetail?['tel'],
       business['phone'],
+      business['phoneNumber'],
+      business['contactNumber'],
+      business['tel'],
       _shopDetail?['telephone'],
     ], '');
     final website = _resolveText([
       _shopDetail?['website'],
       _shopDetail?['homepageUrl'],
+      _shopDetail?['url'],
+      _shopDetail?['link'],
       _shopDetail?['siteUrl'],
       business['website'],
+      business['url'],
+      business['link'],
+      business['siteUrl'],
     ], '');
     final imageUrl = _resolveText([
       _shopDetail?['imageUrl'],
@@ -2540,7 +2651,7 @@ class _ReviewWriteScreenState extends State<_ReviewWriteScreen> {
                 child: Column(
                   children: [
                     const Text(
-                      '사진/영상 추가',
+                      '사진 추가',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,

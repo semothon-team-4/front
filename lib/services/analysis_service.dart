@@ -169,6 +169,9 @@ class AnalysisService {
     if (raw.startsWith('/')) {
       return '${ApiConfig.baseUrl}$raw';
     }
+    if (!raw.contains('/')) {
+      return '${ApiConfig.baseUrl}/images/$raw';
+    }
     return '${ApiConfig.baseUrl}/$raw';
   }
 

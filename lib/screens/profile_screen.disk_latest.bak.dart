@@ -395,24 +395,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   _item(
-                    '알림 설정',
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => _NotificationScreen(
-                          pushEnabled: _pushEnabled,
-                          laundryAlarm: _laundryAlarm,
-                          communityAlarm: _communityAlarm,
-                          onChanged: (push, laundry, community) => setState(() {
-                            _pushEnabled = push;
-                            _laundryAlarm = laundry;
-                            _communityAlarm = community;
-                          }),
-                        ),
-                      ),
-                    ),
-                  ),
-                  _item(
                     '1:1 문의하기',
                     onTap: () => Navigator.push(
                       context,
@@ -561,8 +543,8 @@ class _RecentViewedPostsScreen extends StatelessWidget {
       title: '관심 글',
       nickname: nickname,
       profileImage: profileImage,
-      sectionImagePath: 'assets/images/profile_quick_recent.png',
-      emptyText: '아직 본 게시글이 없어요.',
+      sectionImagePath: 'assets/images/profile_quick_interest_post.png',
+      emptyText: '아직 관심 글이 없어요.',
       isEmpty: posts.isEmpty,
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(18, 20, 18, 24),
