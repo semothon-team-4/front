@@ -77,10 +77,22 @@ class AnalysisService {
 
     final totalCount = (data["totalCount"] as num?)?.toInt() ?? items.length;
 
+    final rawTagCount =
+        (rawCounts["TAG"] as num?)?.toInt() ??
+        (rawCounts["tag"] as num?)?.toInt();
+    final gradeSum =
+        (gradeCounts["A"] ?? 0) +
+        (gradeCounts["B"] ?? 0) +
+        (gradeCounts["C"] ?? 0) +
+        (gradeCounts["D"] ?? 0);
+    final tagCount =
+        rawTagCount ?? (totalCount - gradeSum).clamp(0, totalCount);
+
     return {
       "items": items,
       "gradeCounts": gradeCounts,
       "totalCount": totalCount,
+      "tagCount": tagCount,
     };
   }
 
