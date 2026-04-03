@@ -62,6 +62,12 @@ class AnalysisResultView extends StatelessWidget {
 
   // ──── 케어라벨 스캔 결과 ──────────────────────────
   Widget _buildCareLabelResult(BuildContext context) {
+    final result = analysisResult ?? const <String, dynamic>{};
+    final labels = ((result['careLabels'] as List?) ?? const [])
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -125,39 +131,52 @@ class AnalysisResultView extends StatelessWidget {
                   ),
                 ),
                 child: Column(
-                  children: List.generate(_careItems.length, (index) {
-                    final item = _careItems[index];
-                    return Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          child: Row(
-                            children: [
-                              Image.asset(
-                                item.$1,
-                                width: 26,
-                                height: 26,
-                                fit: BoxFit.contain,
-                              ),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Text(
-                                  item.$2,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF1A39FF),
+                  children: List.generate(
+                    labels.isNotEmpty ? labels.length : _careItems.length,
+                    (index) {
+                      final item = _careItems[index];
+                      final rawItem = labels.isNotEmpty ? labels[index] : null;
+                      final title =
+                          (rawItem?['desc'] as String?)?.trim().isNotEmpty ==
+                              true
+                          ? rawItem!['desc'] as String
+                          : item.$2;
+                      return Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: Row(
+                              children: [
+                                Image.asset(
+                                  item.$1,
+                                  width: 26,
+                                  height: 26,
+                                  fit: BoxFit.contain,
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Text(
+                                    title,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF1A39FF),
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                        if (index < _careItems.length - 1)
-                          const Divider(height: 1, color: Color(0xFFEEEEEE)),
-                      ],
-                    );
-                  }),
+                          if (index <
+                              (labels.isNotEmpty
+                                      ? labels.length
+                                      : _careItems.length) -
+                                  1)
+                            const Divider(height: 1, color: Color(0xFFEEEEEE)),
+                        ],
+                      );
+                    },
+                  ),
                 ),
               ),
               const SizedBox(height: 20),

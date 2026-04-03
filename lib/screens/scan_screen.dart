@@ -1,9 +1,22 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../widgets/analysis_result_view.dart';
-import '../services/analysis_service.dart';
+import '../services/ai_scan_service.dart';
 import '../services/image_service.dart';
+
+void _logRawScanResult(String type, dynamic raw) {
+  try {
+    const encoder = JsonEncoder.withIndent('  ');
+    final pretty = raw is Map || raw is List
+        ? encoder.convert(raw)
+        : raw.toString();
+    debugPrint('=== AI scan result: $type ===\n$pretty');
+  } catch (_) {
+    debugPrint('=== AI scan result: $type ===\n$raw');
+  }
+}
 
 // --- 케어라벨 스캔 화면 ---
 class CareLabelScanScreen extends StatefulWidget {
@@ -38,10 +51,10 @@ class _CareLabelScanScreenState extends State<CareLabelScanScreen>
       _resultPage = -1;
     });
     try {
-      // 케어라벨 스캔 시뮬레이션
-      await Future.delayed(const Duration(seconds: 1));
+      final result = await AiScanService.requestCareLabelScan(image: file);
       if (!mounted) return;
       setState(() {
+        _analysisResult = result;
         _isAnalyzing = false;
         _scanComplete = true;
       });
@@ -423,34 +436,8 @@ class _ClothingScanScreenState extends State<ClothingScanScreen>
       _resultPage = -1;
     });
     try {
-      // ─── [임시 처리 시작] 실제 백엔드 요청 대신 더미 데이터 사용 ──────────────────
-      /*
-      final result = await AnalysisService.requestAnalysis(
-        image: file,
-        name: '스캔한 의류',
-        category: '기타',
-      );
-      */
-      await Future.delayed(const Duration(seconds: 2)); // 분석 시뮬레이션
-      final result = {
-        'id': 'temp_${DateTime.now().millisecondsSinceEpoch}',
-        'name': '스캔한 화이트 셔츠',
-        'category': '상의',
-        'grade': 'B',
-        'lastCare': '2024.03.20',
-        'imagePath': file.path,
-        'iconColor': const Color(0xFF64B5F6),
-        'stainLevel': 10,
-        'damageLevel': 40,
-        'recommendation': '기본적인 관리는 가능하지만 일부 주의가 필요해요.',
-        'guideTitle': '전반적으로 양호한 상태예요. 다만 무릎 부위 등에 경미한 오염이 발견되었습니다.',
-        'guideTip': '데님은 접어서 서랍에 보관하거나 허리 부분을 집게로 잡아 걸어두면 형태 유지에 좋습니다.',
-        'careLabels': [
-          {'name': '물세탁 가능', 'icon': 'water_wash', 'desc': '30도 이하 미지근한 물'},
-          {'name': '표백 금지', 'icon': 'no_bleach', 'desc': '염소계 표백제 사용 불가'},
-        ],
-      };
-      // ─── [임시 처리 끝] ─────────────────────────────────────────────────────────────
+      final result = await AiScanService.requestClothGradeScan(image: file);
+      _logRawScanResult('cloth-grade', result['raw']);
       if (!mounted) return;
       setState(() {
         _analysisResult = result;
