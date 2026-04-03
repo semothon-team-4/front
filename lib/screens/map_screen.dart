@@ -2107,6 +2107,7 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
                     ),
                     const SizedBox(height: 18),
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Expanded(
                           child: ClipRRect(
@@ -2128,15 +2129,13 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
                           ),
                         ),
                         const SizedBox(width: 10),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            _RoundActionButton(
-                              label: '리뷰 쓰기',
-                              icon: Icons.add,
-                              onTap: widget.onWriteReview,
-                            ),
-                          ],
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: _RoundActionButton(
+                            label: '리뷰 쓰기',
+                            icon: Icons.add,
+                            onTap: widget.onWriteReview,
+                          ),
                         ),
                       ],
                     ),
@@ -2197,6 +2196,7 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
                         onTap: widget.onWriteReview,
                       ),
                     ),
+                    const SizedBox(height: 26),
                   ],
                 ],
               ],
@@ -2439,7 +2439,11 @@ class _ReviewWriteScreenState extends State<_ReviewWriteScreen> {
   Future<void> _pickPhoto() async {
     final file = await ImageService.showPickerSheet(context);
     if (file == null || !mounted) return;
-    setState(() => _photos.add(file));
+    setState(() {
+      _photos
+        ..clear()
+        ..add(file);
+    });
   }
 
   bool get _showReviewPlaceholder =>
@@ -2616,7 +2620,7 @@ class _ReviewWriteScreenState extends State<_ReviewWriteScreen> {
               onTap: _pickPhoto,
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 28),
+                height: 188,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(18),
                   border: Border.all(
@@ -2624,52 +2628,63 @@ class _ReviewWriteScreenState extends State<_ReviewWriteScreen> {
                     style: BorderStyle.solid,
                   ),
                 ),
-                child: Column(
-                  children: [
-                    const Text(
-                      '사진 추가',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF1D1B20),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    Container(
-                      width: 52,
-                      height: 52,
-                      decoration: const BoxDecoration(
-                        color: Colors.black,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.add,
-                        color: Colors.white,
-                        size: 30,
-                      ),
-                    ),
-                    if (_photos.isNotEmpty) ...[
-                      const SizedBox(height: 14),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: _photos
-                            .map(
-                              (file) => ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: Image.file(
-                                  file,
-                                  width: 74,
-                                  height: 74,
-                                  fit: BoxFit.cover,
+                clipBehavior: Clip.antiAlias,
+                child: _photos.isNotEmpty
+                    ? Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Image.file(_photos.first, fit: BoxFit.cover),
+                          Positioned(
+                            top: 12,
+                            right: 12,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.6),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                '사진 변경',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
                                 ),
                               ),
-                            )
-                            .toList(),
+                            ),
+                          ),
+                        ],
+                      )
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            '사진 추가',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF1D1B20),
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          Container(
+                            width: 52,
+                            height: 52,
+                            decoration: const BoxDecoration(
+                              color: Colors.black,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.add,
+                              color: Colors.white,
+                              size: 30,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ],
-                ),
               ),
             ),
           ],
