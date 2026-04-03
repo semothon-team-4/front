@@ -2,6 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 
+typedef SaveWardrobeCallback =
+    Future<void> Function({required String name, required String category});
+
 // --- 분석 결과 위젯 (케어라벨 & 의류 공용) ---
 class AnalysisResultView extends StatelessWidget {
   final File? image;
@@ -10,7 +13,7 @@ class AnalysisResultView extends StatelessWidget {
   final bool showRegisterButton;
   final ValueChanged<int>? onNavigate;
   final VoidCallback onBack;
-  final VoidCallback onSave;
+  final SaveWardrobeCallback onSave;
   final VoidCallback onReset;
   final VoidCallback onSaveImage; // 이미지 저장 전용 콜백 추가
   final VoidCallback onStartClothingScan;
@@ -286,6 +289,31 @@ class AnalysisResultView extends StatelessWidget {
                 icon: Icons.arrow_forward,
                 onTap: onStartClothingScan,
                 isPrimary: true,
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Expanded(
+                    child: ResultActionButton(
+                      label: '이미지 저장하기',
+                      icon: Icons.download_outlined,
+                      onTap: null,
+                      isPrimary: false,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ResultActionButton(
+                      label: '내 옷장에 등록하기',
+                      onTap: () => _showWardrobeSaveDialog(
+                        context,
+                        initialName: '스캔한 의류',
+                        initialCategory: '상의',
+                      ),
+                      isPrimary: false,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
             ],
@@ -661,7 +689,11 @@ class AnalysisResultView extends StatelessWidget {
                   width: double.infinity,
                   child: ResultActionButton(
                     label: '내 옷장에 등록하기',
-                    onTap: onSave,
+                    onTap: () => _showWardrobeSaveDialog(
+                      context,
+                      initialName: title,
+                      initialCategory: category,
+                    ),
                     isPrimary: true,
                   ),
                 ),
@@ -915,6 +947,180 @@ class AnalysisResultView extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  Future<void> _showWardrobeSaveDialog(
+    BuildContext context, {
+    required String initialName,
+    required String initialCategory,
+  }) async {
+    final submission = await showDialog<({String name, String category})>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return _WardrobeSaveDialog(
+          initialName: initialName,
+          initialCategory: initialCategory,
+        );
+      },
+    );
+
+    if (submission == null || !context.mounted) return;
+    try {
+      await onSave(name: submission.name, category: submission.category);
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
+  }
+}
+
+class _WardrobeSaveDialog extends StatefulWidget {
+  final String initialName;
+  final String initialCategory;
+
+  const _WardrobeSaveDialog({
+    required this.initialName,
+    required this.initialCategory,
+  });
+
+  @override
+  State<_WardrobeSaveDialog> createState() => _WardrobeSaveDialogState();
+}
+
+class _WardrobeSaveDialogState extends State<_WardrobeSaveDialog> {
+  static const _categories = ['상의', '하의', '아우터', '신발', '가방', '모자'];
+  late final TextEditingController _nameController;
+  late String _selectedCategory;
+  String? _nameError;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.initialName);
+    _selectedCategory = _categories.contains(widget.initialCategory)
+        ? widget.initialCategory
+        : '상의';
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+      ),
+      contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '옷장에 등록',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1D1B20),
+            ),
+          ),
+          const SizedBox(height: 18),
+          TextField(
+            controller: _nameController,
+            autofocus: true,
+            decoration: InputDecoration(
+              labelText: '옷 이름',
+              errorText: _nameError,
+              filled: true,
+              fillColor: const Color(0xFFF7FBFD),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide.none,
+              ),
+            ),
+            onChanged: (_) {
+              if (_nameError != null) {
+                setState(() => _nameError = null);
+              }
+            },
+          ),
+          const SizedBox(height: 14),
+          DropdownButtonFormField<String>(
+            initialValue: _selectedCategory,
+            decoration: InputDecoration(
+              labelText: '분류',
+              filled: true,
+              fillColor: const Color(0xFFF7FBFD),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide.none,
+              ),
+            ),
+            items: _categories
+                .map(
+                  (category) => DropdownMenuItem(
+                    value: category,
+                    child: Text(category),
+                  ),
+                )
+                .toList(),
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() => _selectedCategory = value);
+            },
+          ),
+        ],
+      ),
+      actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      actions: [
+        TextButton(
+          style: TextButton.styleFrom(
+            backgroundColor: Colors.white,
+            foregroundColor: const Color(0xFF1D1B20),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 18,
+              vertical: 12,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+              side: const BorderSide(color: Color(0xFF1D1B20)),
+            ),
+          ),
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('취소'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFF1A39FF),
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(
+              horizontal: 18,
+              vertical: 12,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+          ),
+          onPressed: () {
+            final name = _nameController.text.trim();
+            if (name.isEmpty) {
+              setState(() => _nameError = '옷 이름을 입력해 주세요.');
+              return;
+            }
+            Navigator.of(
+              context,
+            ).pop((name: name, category: _selectedCategory));
+          },
+          child: const Text('등록'),
+        ),
+      ],
     );
   }
 }

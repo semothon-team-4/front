@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 
 import 'api_config.dart';
 import 'auth_service.dart';
@@ -24,6 +25,76 @@ class AnalysisService {
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception('의류 분석 요청에 실패했습니다.');
+    }
+
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    return _mapAnalysisDetail(
+      Map<String, dynamic>.from((body['data'] as Map?) ?? {}),
+    );
+  }
+
+  static Future<Map<String, dynamic>> saveConditionAnalysis({
+    required File image,
+    required String name,
+    required String category,
+    required String grade,
+    required int stainLevel,
+    required int damageLevel,
+    required String recommendation,
+    required String storageTip,
+  }) async {
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrl}/analyses/condition'
+      '?name=${Uri.encodeQueryComponent(name)}'
+      '&category=${Uri.encodeQueryComponent(category)}'
+      '&grade=${Uri.encodeQueryComponent(grade)}'
+      '&stainLevel=$stainLevel'
+      '&damageLevel=$damageLevel'
+      '&recommendation=${Uri.encodeQueryComponent(recommendation)}'
+      '&storageTip=${Uri.encodeQueryComponent(storageTip)}',
+    );
+    final request = http.MultipartRequest('POST', uri)
+      ..headers.addAll(AuthService.authorizedHeaders())
+      ..files.add(await http.MultipartFile.fromPath('image', image.path));
+
+    final response = await http.Response.fromStream(await request.send());
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(_extractMessage(response.body, '의류 상태 저장에 실패했습니다.'));
+    }
+
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    return _mapAnalysisDetail(
+      Map<String, dynamic>.from((body['data'] as Map?) ?? {}),
+    );
+  }
+
+  static Future<Map<String, dynamic>> saveCareLabelAnalysis({
+    required File image,
+    required String name,
+    required String category,
+    required List<Map<String, dynamic>> labels,
+  }) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('${ApiConfig.baseUrl}/analyses/care-label'),
+    )
+      ..headers.addAll(AuthService.authorizedHeaders())
+      ..files.add(await http.MultipartFile.fromPath('image', image.path))
+      ..files.add(
+        http.MultipartFile.fromString(
+          'data',
+          jsonEncode({
+            'name': name,
+            'category': category,
+            'labels': labels,
+          }),
+          contentType: MediaType('application', 'json'),
+        ),
+      );
+
+    final response = await http.Response.fromStream(await request.send());
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(_extractMessage(response.body, '케어라벨 저장에 실패했습니다.'));
     }
 
     final body = jsonDecode(response.body) as Map<String, dynamic>;
@@ -184,5 +255,14 @@ class AnalysisService {
     if (diff.inHours < 1) return '${diff.inMinutes}분 전';
     if (diff.inDays < 1) return '${diff.inHours}시간 전';
     return '${diff.inDays}일 전';
+  }
+
+  static String _extractMessage(String body, String fallback) {
+    try {
+      final decoded = jsonDecode(body) as Map<String, dynamic>;
+      return decoded['message']?.toString() ?? fallback;
+    } catch (_) {
+      return fallback;
+    }
   }
 }

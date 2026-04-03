@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../widgets/analysis_result_view.dart';
 import '../services/ai_scan_service.dart';
+import '../services/analysis_service.dart';
 import '../services/image_service.dart';
 
 void _logRawScanResult(String type, dynamic raw) {
@@ -270,113 +271,57 @@ class _CareLabelScanScreenState extends State<CareLabelScanScreen>
     );
   }
 
-  Future<void> _saveToWardrobe() async {
-    final nameCtrl = TextEditingController();
-    final categoryNotifier = ValueNotifier<String>('상의');
+  Future<void> _saveToWardrobe({
+    required String name,
+    required String category,
+  }) async {
+    final image = _scannedImage;
+    if (image == null) {
+      throw Exception('저장할 이미지가 없습니다.');
+    }
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('옷장에 저장'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameCtrl,
-              autofocus: true,
-              decoration: InputDecoration(
-                hintText: '의류 이름 (예: 흰 면 셔츠)',
-                hintStyle: const TextStyle(color: Color(0xFFBDBDBD)),
-                filled: true,
-                fillColor: const Color(0xFFF8FAFF),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            ValueListenableBuilder<String>(
-              valueListenable: categoryNotifier,
-              builder: (_, selected, _) => DropdownButtonFormField<String>(
-                initialValue: selected,
-                decoration: InputDecoration(
-                  labelText: '카테고리',
-                  filled: true,
-                  fillColor: const Color(0xFFF8FAFF),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-                items: ['상의', '하의', '아우터', '기타']
-                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                    .toList(),
-                onChanged: (v) {
-                  if (v != null) categoryNotifier.value = v;
-                },
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('취소'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF8FEAFD),
-              foregroundColor: const Color(0xFF1D1B20),
-              elevation: 0,
-            ),
-            child: const Text('저장'),
-          ),
-        ],
-      ),
+    final labels = ((_analysisResult?['careLabels'] as List?) ?? const [])
+        .whereType<Map>()
+        .map((item) {
+          final map = Map<String, dynamic>.from(item);
+          return <String, dynamic>{
+            'symbol': map['name']?.toString() ?? 'UNKNOWN',
+            'desc': map['desc']?.toString() ?? '',
+            'imageBase64': map['iconB64']?.toString() ?? '',
+          };
+        })
+        .toList();
+
+    await AnalysisService.saveCareLabelAnalysis(
+      image: image,
+      name: name,
+      category: category,
+      labels: labels,
     );
 
-    if (confirmed == true && mounted) {
-      final name = nameCtrl.text.trim().isEmpty
-          ? '스캔한 의류'
-          : nameCtrl.text.trim();
-      final now = DateTime.now();
-      try {
-        if (_scannedImage != null) {
-          await ImageService.saveImageLocally(
-            _scannedImage!,
-            'scan_${now.millisecondsSinceEpoch}.jpg',
-          );
-        }
-      } catch (_) {}
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(
-                  Icons.check_circle_outline,
-                  color: Colors.white,
-                  size: 20,
-                ),
-                const SizedBox(width: 10),
-                Text('"$name"이(가) 옷장에 저장되었어요!'),
-              ],
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(
+              Icons.check_circle_outline,
+              color: Colors.white,
+              size: 20,
             ),
-            backgroundColor: const Color(0xFF1A39FF),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
-        widget.onNavigate?.call(1);
-      }
-    }
-    nameCtrl.dispose();
-    categoryNotifier.dispose();
+            const SizedBox(width: 10),
+            Text('"$name"이(가) 옷장에 저장되었어요!'),
+          ],
+        ),
+        backgroundColor: const Color(0xFF1A39FF),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+    widget.onNavigate?.call(1);
+    Navigator.popUntil(context, (route) => route.isFirst);
   }
 
   Widget _buildViewfinder() {
@@ -669,8 +614,33 @@ class _ClothingScanScreenState extends State<ClothingScanScreen>
     );
   }
 
-  Future<void> _saveToWardrobe() async {
-    final name = (_analysisResult?['name'] as String?) ?? '스캔한 의류';
+  Future<void> _saveToWardrobe({
+    required String name,
+    required String category,
+  }) async {
+    final image = _scannedImage;
+    if (image == null) {
+      throw Exception('저장할 이미지가 없습니다.');
+    }
+
+    await AnalysisService.saveConditionAnalysis(
+      image: image,
+      name: name,
+      category: category,
+      grade: ((_analysisResult?['grade'] as String?) ?? 'B').toUpperCase(),
+      stainLevel: ((_analysisResult?['stainLevel'] as num?) ?? 0).toInt(),
+      damageLevel: ((_analysisResult?['damageLevel'] as num?) ?? 0).toInt(),
+      recommendation:
+          (_analysisResult?['recommendation'] as String?)?.trim().isNotEmpty ==
+              true
+          ? _analysisResult!['recommendation'] as String
+          : '분석 결과를 확인해 주세요.',
+      storageTip:
+          (_analysisResult?['guideTip'] as String?)?.trim().isNotEmpty == true
+          ? _analysisResult!['guideTip'] as String
+          : '통풍이 잘 되는 곳에 보관해 주세요.',
+    );
+
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
