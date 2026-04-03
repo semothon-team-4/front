@@ -1,12 +1,16 @@
 import 'dart:io';
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+
+import '../services/image_service.dart';
 import '../widgets/analysis_result_view.dart';
 import 'community_screen.dart';
 
 class WardrobeScreen extends StatefulWidget {
   final ValueChanged<int>? onNavigate;
   final int? refreshSignal;
+
   const WardrobeScreen({super.key, this.onNavigate, this.refreshSignal});
 
   @override
@@ -14,8 +18,10 @@ class WardrobeScreen extends StatefulWidget {
 }
 
 class _WardrobeScreenState extends State<WardrobeScreen> {
+  static const _allCategory = '전체';
+
   bool _isLoading = true;
-  String _selectedCategory = '전체';
+  String _selectedCategory = _allCategory;
   List<Map<String, dynamic>> _items = [];
 
   @override
@@ -35,59 +41,63 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
   Future<void> _loadItems() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
-    // [비활성화] 백엔드 요청 대신 더미 데이터 사용
-    await Future.delayed(const Duration(milliseconds: 500));
+
+    await Future.delayed(const Duration(milliseconds: 300));
+
     _items = [
       {
         'id': '1',
         'name': '화이트 코튼 셔츠',
         'category': '상의',
         'grade': 'A',
-        'lastCare': '2024.03.20',
+        'lastCare': '2026.03.20',
         'imagePath': null,
         'iconColor': const Color(0xFF64B5F6),
         'stainLevel': 5,
         'damageLevel': 10,
-        'recommendation': '상태가 아주 좋아요! 일반적인 세탁으로 관리하세요.',
+        'recommendation': '현재 상태가 아주 좋아요. 기본 세탁과 보관만 꾸준히 해주면 됩니다.',
       },
       {
         'id': '2',
-        'name': '데님 팬츠',
+        'name': '네이비 슬랙스',
         'category': '하의',
         'grade': 'B',
-        'lastCare': '2024.03.15',
+        'lastCare': '2026.03.15',
         'imagePath': null,
         'iconColor': const Color(0xFF1A237E),
         'stainLevel': 15,
         'damageLevel': 25,
-        'recommendation': '중성세제를 사용하여 뒤집어서 세탁하는 것을 추천해요.',
+        'recommendation': '중성세제로 세탁하고 마찰이 심한 부분은 부드럽게 관리해 주세요.',
       },
       {
         'id': '3',
-        'name': '울 가디건',
+        'name': '베이지 가디건',
         'category': '아우터',
         'grade': 'C',
-        'lastCare': '2024.02.28',
+        'lastCare': '2026.02.28',
         'imagePath': null,
         'iconColor': const Color(0xFFBCAAA4),
         'stainLevel': 30,
         'damageLevel': 45,
-        'recommendation': '마찰에 의한 보풀이 있으니 드라이클리닝을 권장합니다.',
+        'recommendation': '마모가 조금 보여요. 옷걸이 자국과 보풀을 함께 점검해 주세요.',
       },
       {
         'id': '4',
-        'name': '린넨 자켓',
+        'name': '그레이 자켓',
         'category': '아우터',
         'grade': 'D',
-        'lastCare': '2024.01.10',
+        'lastCare': '2026.01.10',
         'imagePath': null,
         'iconColor': const Color(0xFFE0E0E0),
         'stainLevel': 60,
         'damageLevel': 70,
-        'recommendation': '손상이 심한 상태입니다. 전문 세탁소에 맡겨주세요.',
+        'recommendation': '손상이 큰 상태예요. 전문 세탁이나 수선 여부를 먼저 확인하는 것이 좋아요.',
       },
     ];
-    if (mounted) setState(() => _isLoading = false);
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
   }
 
   void _showDetailSheet(Map<String, dynamic> item) {
@@ -103,8 +113,53 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
           onSave: () {},
           onReset: () {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('이미지가 저장되었습니다.')),
+              const SnackBar(content: Text('이미지가 초기화되었습니다.')),
             );
+          },
+          onSaveImage: () async {
+            try {
+              final imagePath = item['imagePath'] as String?;
+              if (imagePath != null) {
+                final file = File(imagePath);
+                if (await file.exists()) {
+                  final now = DateTime.now();
+                  await ImageService.saveImageLocally(
+                    file,
+                    'wardrobe_${now.millisecondsSinceEpoch}.jpg',
+                  );
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Row(
+                          children: [
+                            Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
+                            SizedBox(width: 10),
+                            Text('이미지를 저장했어요.'),
+                          ],
+                        ),
+                        backgroundColor: const Color(0xFF1A39FF),
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    );
+                  }
+                  return;
+                }
+              }
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('저장할 이미지를 찾을 수 없어요.')),
+                );
+              }
+            } catch (e) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('저장에 실패했어요: $e')),
+                );
+              }
+            }
           },
           onStartClothingScan: () {},
         ),
@@ -112,15 +167,44 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
     ).then((_) => _loadItems());
   }
 
+  void _openShareSheet(Map<String, dynamic> item) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => SharePostSheet(
+        title: item['name'] as String,
+        category: item['category'] as String,
+        grade: item['grade'] as String,
+        imageUrl: item['imagePath'] as String?,
+      ),
+    );
+  }
+
+  Color _getGradeColor(String grade) {
+    switch (grade) {
+      case 'A':
+        return const Color(0xFF4CAF50);
+      case 'B':
+        return const Color(0xFF8BC34A);
+      case 'C':
+        return const Color(0xFFFFA000);
+      case 'D':
+        return const Color(0xFFE53935);
+      default:
+        return Colors.grey;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final filtered = _selectedCategory == '전체'
+    final filtered = _selectedCategory == _allCategory
         ? _items
-        : _items.where((i) => i['category'] == _selectedCategory).toList();
+        : _items.where((item) => item['category'] == _selectedCategory).toList();
     final gradeCount = <String, int>{};
-    for (var it in _items) {
-      final g = it['grade'] as String;
-      gradeCount[g] = (gradeCount[g] ?? 0) + 1;
+    for (final item in _items) {
+      final grade = item['grade'] as String;
+      gradeCount[grade] = (gradeCount[grade] ?? 0) + 1;
     }
 
     return Scaffold(
@@ -133,7 +217,6 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
               bottom: false,
               child: CustomScrollView(
                 slivers: [
-                  // ─── 헤더 ───────────────────────────────────────────
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -150,17 +233,12 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                       ),
                     ),
                   ),
-
-                  // ─── 경고 알림 ──────────────────────────────────────
                   if ((gradeCount['D'] ?? 0) > 0)
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           decoration: BoxDecoration(
                             color: const Color(0xFFFFF3E0),
                             borderRadius: BorderRadius.circular(14),
@@ -176,7 +254,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  '관리가 필요한 의류가 ${gradeCount['D']}벌 있어요',
+                                  '관리 우선 대상 의류가 ${gradeCount['D']}개 있어요.',
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
@@ -191,8 +269,6 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                         ),
                       ),
                     ),
-
-                  // ─── 카테고리 필터 ───────────────────────────────────
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
@@ -211,13 +287,11 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                           ),
                           GestureDetector(
                             onTap: () async {
-                              final cats = ['전체', '상의', '하의', '아우터', '기타'];
+                              const categories = ['전체', '상의', '하의', '아우터', '기타'];
                               final picked = await showModalBottomSheet<String>(
                                 context: context,
                                 shape: const RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.vertical(
-                                    top: Radius.circular(20),
-                                  ),
+                                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                                 ),
                                 builder: (_) => Column(
                                   mainAxisSize: MainAxisSize.min,
@@ -232,19 +306,16 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                                       ),
                                     ),
                                     const SizedBox(height: 16),
-                                    ...cats.map(
-                                      (c) => ListTile(
+                                    ...categories.map(
+                                      (category) => ListTile(
                                         title: Text(
-                                          c,
+                                          category,
                                           style: const TextStyle(fontSize: 15),
                                         ),
-                                        trailing: _selectedCategory == c
-                                            ? const Icon(
-                                                Icons.check,
-                                                color: Color(0xFF1A39FF),
-                                              )
+                                        trailing: _selectedCategory == category
+                                            ? const Icon(Icons.check, color: Color(0xFF1A39FF))
                                             : null,
-                                        onTap: () => Navigator.pop(context, c),
+                                        onTap: () => Navigator.pop(context, category),
                                       ),
                                     ),
                                     const SizedBox(height: 16),
@@ -256,10 +327,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                               }
                             },
                             child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 8,
-                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF79D5F1),
                                 borderRadius: BorderRadius.circular(999),
@@ -296,18 +364,16 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                       ),
                     ),
                   ),
-
-                  // ─── 그리드 목록 ────────────────────────────────────
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 90),
                     sliver: filtered.isEmpty
-                        ? SliverToBoxAdapter(
+                        ? const SliverToBoxAdapter(
                             child: Padding(
-                              padding: const EdgeInsets.only(top: 60),
+                              padding: EdgeInsets.only(top: 60),
                               child: Center(
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
-                                  children: const [
+                                  children: [
                                     Icon(
                                       Icons.checkroom_outlined,
                                       size: 52,
@@ -315,7 +381,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                                     ),
                                     SizedBox(height: 12),
                                     Text(
-                                      '등록된 의류가 없어요',
+                                      '등록된 의류가 없어요.',
                                       style: TextStyle(
                                         fontSize: 14,
                                         color: Color(0xFF90A4AE),
@@ -335,12 +401,12 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                             ),
                             delegate: SliverChildBuilderDelegate(
                               (context, index) {
-                                final it = filtered[index];
+                                final item = filtered[index];
                                 return _ClothingItemCard(
-                                  item: it,
-                                  onTap: () => _showDetailSheet(it),
-                                  onShare: () => _openShareSheet(it),
-                                  gradeColor: _getGradeColor(it['grade'] as String),
+                                  item: item,
+                                  onTap: () => _showDetailSheet(item),
+                                  onShare: () => _openShareSheet(item),
+                                  gradeColor: _getGradeColor(item['grade'] as String),
                                 );
                               },
                               childCount: filtered.length,
@@ -350,41 +416,9 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                 ],
               ),
             ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {},
-        backgroundColor: const Color(0xFF1D1B20),
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('옷 분석하기', style: TextStyle(color: Colors.white)),
-      ),
     );
-  }
-
-  void _openShareSheet(Map<String, dynamic> item) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => SharePostSheet(
-        title: item['name'] as String,
-        category: item['category'] as String,
-        grade: item['grade'] as String,
-        imageUrl: item['imagePath'] as String?,
-      ),
-    );
-  }
-
-  Color _getGradeColor(String grade) {
-    switch (grade) {
-      case 'A': return const Color(0xFF4CAF50);
-      case 'B': return const Color(0xFF8BC34A);
-      case 'C': return const Color(0xFFFFA000);
-      case 'D': return const Color(0xFFE53935);
-      default: return Colors.grey;
-    }
   }
 }
-
-// ─── 헬퍼 위젯 및 기타 부가 클래스들 ───────────────────────────────
 
 class _WardrobeHeader extends StatelessWidget {
   final int totalCount;
@@ -424,7 +458,7 @@ class _WardrobeHeader extends StatelessWidget {
               ),
               const Center(
                 child: Text(
-                  '내 옷장',
+                  '옷장',
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
@@ -448,15 +482,14 @@ class _WardrobeHeader extends StatelessWidget {
               (availableWidth - (minGap * (cardCount - 1))) / cardCount,
             );
             final gap =
-                ((availableWidth - (cardSize * cardCount)) / (cardCount - 1))
-                    .clamp(minGap, 8.0);
+                ((availableWidth - (cardSize * cardCount)) / (cardCount - 1)).clamp(minGap, 8.0);
 
             return Row(
               children: [
                 _WardrobeStatCard(
                   size: cardSize,
                   count: totalCount,
-                  title: '옷',
+                  title: '전체',
                   icon: Icons.checkroom_outlined,
                   textColor: const Color(0xFF2A2D34),
                   gradientColors: const [Color(0xFF8ADAF0), Color(0xFFFFFFFF)],
@@ -465,21 +498,21 @@ class _WardrobeHeader extends StatelessWidget {
                 ...['A', 'B', 'C', 'D'].map((grade) {
                   final config = switch (grade) {
                     'A' => (
-                      title: 'A등급',
-                      gradient: const [Color(0xFFFF9EA8), Color(0xFFFFFFFF)],
-                    ),
+                        title: 'A등급',
+                        gradient: const [Color(0xFFFF9EA8), Color(0xFFFFFFFF)],
+                      ),
                     'B' => (
-                      title: 'B등급',
-                      gradient: const [Color(0xFFFFC39A), Color(0xFFFFFFFF)],
-                    ),
+                        title: 'B등급',
+                        gradient: const [Color(0xFFFFC39A), Color(0xFFFFFFFF)],
+                      ),
                     'C' => (
-                      title: 'C등급',
-                      gradient: const [Color(0xFFFFE88F), Color(0xFFFFFFFF)],
-                    ),
+                        title: 'C등급',
+                        gradient: const [Color(0xFFFFE88F), Color(0xFFFFFFFF)],
+                      ),
                     _ => (
-                      title: 'D등급',
-                      gradient: const [Color(0xFFC9FF74), Color(0xFFFFFFFF)],
-                    ),
+                        title: 'D등급',
+                        gradient: const [Color(0xFFC9FF74), Color(0xFFFFFFFF)],
+                      ),
                   };
 
                   return Padding(
@@ -641,7 +674,7 @@ class _ClothingItemCard extends StatelessWidget {
                         ),
                         child: Center(
                           child: Text(
-                            item['grade'],
+                            item['grade'] as String,
                             style: TextStyle(
                               color: gradeColor,
                               fontSize: 14,
@@ -687,7 +720,7 @@ class _ClothingItemCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    item['name'],
+                    item['name'] as String,
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
@@ -699,16 +732,13 @@ class _ClothingItemCard extends StatelessWidget {
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: const Color(0xFFE8F4FD),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          item['category'],
+                          item['category'] as String,
                           style: const TextStyle(
                             fontSize: 10,
                             color: Color(0xFF1A39FF),
@@ -717,7 +747,7 @@ class _ClothingItemCard extends StatelessWidget {
                       ),
                       const Spacer(),
                       Text(
-                        item['lastCare'],
+                        item['lastCare'] as String,
                         style: const TextStyle(
                           fontSize: 10,
                           color: Color(0xFFB0BEC5),
@@ -771,7 +801,11 @@ class SharePostSheet extends StatelessWidget {
           const SizedBox(height: 24),
           const Text(
             '커뮤니티에 공유하기',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1D1B20)),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1D1B20),
+            ),
           ),
           const SizedBox(height: 24),
           Container(
@@ -790,15 +824,29 @@ class SharePostSheet extends StatelessWidget {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Center(child: Icon(Icons.checkroom, color: Color(0xFF1A39FF))),
+                  child: const Center(
+                    child: Icon(Icons.checkroom, color: Color(0xFF1A39FF)),
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      Text('$category · $grade등급', style: const TextStyle(color: Color(0xFF90A4AE), fontSize: 12)),
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1D1B20),
+                        ),
+                      ),
+                      Text(
+                        '$category · $grade등급',
+                        style: const TextStyle(
+                          color: Color(0xFF90A4AE),
+                          fontSize: 12,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -819,7 +867,10 @@ class SharePostSheet extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
-              child: const Text('게시글 작성하러 가기', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: const Text(
+                '게시글 작성하러 가기',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
           ),
         ],

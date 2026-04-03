@@ -64,6 +64,39 @@ class _CareLabelScanScreenState extends State<CareLabelScanScreen> with SingleTi
         _resultPage = -1;
       });
 
+  Future<void> _saveImage() async {
+    if (_scannedImage == null) return;
+    try {
+      final now = DateTime.now();
+      await ImageService.saveImageLocally(
+        _scannedImage!,
+        'scan_label_${now.millisecondsSinceEpoch}.jpg',
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
+                SizedBox(width: 10),
+                Text('이미지가 갤러리에 저장되었어요!'),
+              ],
+            ),
+            backgroundColor: const Color(0xFF1A39FF),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('저장 실패: $e')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_resultPage == 0) {
@@ -75,6 +108,7 @@ class _CareLabelScanScreenState extends State<CareLabelScanScreen> with SingleTi
         onBack: () => setState(() => _resultPage = -1),
         onSave: _saveToWardrobe,
         onReset: _reset,
+        onSaveImage: _saveImage,
         onStartClothingScan: () {
           Navigator.push(
             context,
@@ -294,7 +328,13 @@ class _CareLabelScanScreenState extends State<CareLabelScanScreen> with SingleTi
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('"$name"이(가) 옷장에 저장되었어요!'),
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
+                const SizedBox(width: 10),
+                Text('"$name"이(가) 옷장에 저장되었어요!'),
+              ],
+            ),
             backgroundColor: const Color(0xFF1A39FF),
             behavior: SnackBarBehavior.floating,
             shape:
@@ -364,11 +404,34 @@ class _ClothingScanScreenState extends State<ClothingScanScreen> with SingleTick
       _resultPage = -1;
     });
     try {
+      // ─── [임시 처리 시작] 실제 백엔드 요청 대신 더미 데이터 사용 ──────────────────
+      /*
       final result = await AnalysisService.requestAnalysis(
         image: file,
         name: '스캔한 의류',
         category: '기타',
       );
+      */
+      await Future.delayed(const Duration(seconds: 2)); // 분석 시뮬레이션
+      final result = {
+        'id': 'temp_${DateTime.now().millisecondsSinceEpoch}',
+        'name': '스캔한 화이트 셔츠',
+        'category': '상의',
+        'grade': 'B',
+        'lastCare': '2024.03.20',
+        'imagePath': file.path,
+        'iconColor': const Color(0xFF64B5F6),
+        'stainLevel': 10,
+        'damageLevel': 40,
+        'recommendation': '기본적인 관리는 가능하지만 일부 주의가 필요해요.',
+        'guideTitle': '전반적으로 양호한 상태예요. 다만 무릎 부위 등에 경미한 오염이 발견되었습니다.',
+        'guideTip': '데님은 접어서 서랍에 보관하거나 허리 부분을 집게로 잡아 걸어두면 형태 유지에 좋습니다.',
+        'careLabels': [
+          {'name': '물세탁 가능', 'icon': 'water_wash', 'desc': '30도 이하 미지근한 물'},
+          {'name': '표백 금지', 'icon': 'no_bleach', 'desc': '염소계 표백제 사용 불가'},
+        ],
+      };
+      // ─── [임시 처리 끝] ─────────────────────────────────────────────────────────────
       if (!mounted) return;
       setState(() {
         _analysisResult = result;
@@ -395,6 +458,39 @@ class _ClothingScanScreenState extends State<ClothingScanScreen> with SingleTick
         _resultPage = -1;
       });
 
+  Future<void> _saveImage() async {
+    if (_scannedImage == null) return;
+    try {
+      final now = DateTime.now();
+      await ImageService.saveImageLocally(
+        _scannedImage!,
+        'scan_cloth_${now.millisecondsSinceEpoch}.jpg',
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
+                SizedBox(width: 10),
+                Text('이미지가 갤러리에 저장되었어요!'),
+              ],
+            ),
+            backgroundColor: const Color(0xFF1A39FF),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('저장 실패: $e')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_resultPage == 0) {
@@ -406,6 +502,7 @@ class _ClothingScanScreenState extends State<ClothingScanScreen> with SingleTick
         onBack: () => setState(() => _resultPage = -1),
         onSave: _saveToWardrobe,
         onReset: _reset,
+        onSaveImage: _saveImage,
         onStartClothingScan: () {},
       );
     }
@@ -561,7 +658,13 @@ class _ClothingScanScreenState extends State<ClothingScanScreen> with SingleTick
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('"$name"이(가) 내 옷장에 등록되었어요!'),
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
+            const SizedBox(width: 10),
+            Text('"$name"이(가) 내 옷장에 등록되었어요!'),
+          ],
+        ),
         backgroundColor: const Color(0xFF1A39FF),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

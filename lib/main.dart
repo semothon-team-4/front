@@ -34,6 +34,12 @@ class CareTagApp extends StatelessWidget {
     return MaterialApp(
       title: 'Clothes Up',
       debugShowCheckedModeBanner: false,
+      builder: (context, child) {
+        return ScrollConfiguration(
+          behavior: const _AppScrollBehavior(),
+          child: child!,
+        );
+      },
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF8FEAFD),
@@ -111,5 +117,14 @@ class CareTagApp extends StatelessWidget {
       ),
       home: const SplashScreen(),
     );
+  }
+}
+
+class _AppScrollBehavior extends ScrollBehavior {
+  const _AppScrollBehavior();
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) {
+    return const ClampingScrollPhysics();
   }
 }
