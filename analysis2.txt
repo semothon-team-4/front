@@ -1,4 +1,0 @@
-[warning] The value of the field '_showSearchField' isn't used (C:\Users\kimbk\Documents\KHU\Project\Semothon\front\lib\screens\map_screen.dart:18:8)
-[error] A value of type 'File' can't be assigned to a variable of type 'XFile?' (C:\Users\kimbk\Documents\KHU\Project\Semothon\front\lib\screens\scan_screen.dart:51:23)
-[error] The argument type 'XFile' can't be assigned to the parameter type 'File'.  (C:\Users\kimbk\Documents\KHU\Project\Semothon\front\lib\screens\scan_screen.dart:379:15)
-[error] The name 'MyApp' isn't a class (C:\Users\kimbk\Documents\KHU\Project\Semothon\front\test\widget_test.dart:16:35)

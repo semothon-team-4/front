@@ -30,7 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
     switch (index) {
       case 0: return const MapScreen();
       case 1: return WardrobeScreen(onNavigate: _navigateTo, refreshSignal: _wardrobeRefresh);
-      case 2: return ScanScreen(onNavigate: _navigateTo);
+      case 2: return CareLabelScanScreen(onNavigate: _navigateTo);
       case 3: return const CommunityScreen();
       case 4: return const ProfileScreen();
       default: return const SizedBox.shrink();
