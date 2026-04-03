@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/analysis_service.dart';
 import '../services/image_service.dart';
-import '../services/wardrobe_db.dart';
 import 'community_screen.dart';
 
 // 스캔 모드: 케어라벨 스캔 vs 옷 스캔
@@ -71,21 +70,6 @@ class _ScanScreenState extends State<ScanScreen>
       });
     } catch (e) {
       if (!mounted) return;
-      if (_mode == _ScanMode.clothing) {
-        setState(() {
-          _analysisResult = _buildMockClothingAnalysis(file);
-          _isAnalyzing = false;
-          _scanComplete = true;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('임시 분석 결과로 미리보기를 보여드리고 있어요.'),
-            backgroundColor: Color(0xFF1A39FF),
-          ),
-        );
-        return;
-      }
-
       setState(() {
         _isAnalyzing = false;
         _scanComplete = false;
@@ -94,35 +78,6 @@ class _ScanScreenState extends State<ScanScreen>
         SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
       );
     }
-  }
-
-  Map<String, dynamic> _buildMockClothingAnalysis(File file) {
-    final fileName = file.path.split('/').last.toLowerCase();
-    final category =
-        fileName.contains('pants') ||
-            fileName.contains('denim') ||
-            fileName.contains('jean')
-        ? '하의'
-        : fileName.contains('coat') ||
-              fileName.contains('jacket') ||
-              fileName.contains('outer')
-        ? '아우터'
-        : '기타';
-
-    return {
-      'name': '데님 팬츠',
-      'category': category,
-      'grade': 'B',
-      'recommendation': '기본적인 관리는 가능하지만 일부 주의가 필요해요.',
-      'desc': '기본적인 관리는 가능하지만 일부 주의가 필요해요.',
-      'stainLevel': 10,
-      'damageLevel': 40,
-      'careLabels': const [
-        {'name': '면'},
-        {'name': '폴리에스터'},
-      ],
-      'imageUrl': '',
-    };
   }
 
   Future<void> _startClothingScanFlow() async {
@@ -450,33 +405,6 @@ class _ScanScreenState extends State<ScanScreen>
   Future<void> _saveToWardrobe() async {
     if (_mode == _ScanMode.clothing) {
       final name = (_analysisResult?['name'] as String?) ?? '스캔한 의류';
-      final category = (_analysisResult?['category'] as String?) ?? '기타';
-      final now = DateTime.now();
-      String? savedImagePath;
-
-      try {
-        if (_scannedImage != null) {
-          savedImagePath = await ImageService.saveImageLocally(
-            _scannedImage!,
-            'scan_${now.millisecondsSinceEpoch}.jpg',
-          );
-        }
-      } catch (_) {}
-
-      try {
-        final result = _analysisResult ?? const <String, dynamic>{};
-        await WardrobeDB.insertClothing({
-          'name': name,
-          'category': category,
-          'grade': (result['grade'] as String?) ?? 'B',
-          'desc':
-              (result['recommendation'] as String?) ??
-              (result['desc'] as String?) ??
-              '분석 결과를 확인해 주세요.',
-          'imagePath': savedImagePath ?? '',
-          'lastCare': now.toIso8601String(),
-        });
-      } catch (_) {}
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -564,32 +492,6 @@ class _ScanScreenState extends State<ScanScreen>
       final name = nameCtrl.text.trim().isEmpty
           ? '스캔한 의류'
           : nameCtrl.text.trim();
-      final now = DateTime.now();
-      final selectedCategory = categoryNotifier.value;
-      String? savedImagePath;
-      try {
-        if (_scannedImage != null) {
-          savedImagePath = await ImageService.saveImageLocally(
-            _scannedImage!,
-            'scan_${now.millisecondsSinceEpoch}.jpg',
-          );
-        }
-      } catch (_) {}
-
-      try {
-        final result = _analysisResult ?? const <String, dynamic>{};
-        await WardrobeDB.insertClothing({
-          'name': name,
-          'category': selectedCategory,
-          'grade': (result['grade'] as String?) ?? 'B',
-          'desc':
-              (result['recommendation'] as String?) ??
-              (result['desc'] as String?) ??
-              '분석 결과를 확인해 주세요.',
-          'imagePath': savedImagePath ?? '',
-          'lastCare': now.toIso8601String(),
-        });
-      } catch (_) {}
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1367,9 +1269,14 @@ class ScanAnalysisResultScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final grade = (analysisResult['grade'] as String?)?.trim();
+    final mode = (grade == null || grade.isEmpty)
+        ? _ScanMode.careLabel
+        : _ScanMode.clothing;
+
     return _TagScanResultScreen(
       image: null,
-      mode: _ScanMode.clothing,
+      mode: mode,
       analysisResult: analysisResult,
       onNavigate: onNavigate,
       onBack: () => Navigator.of(context).pop(),

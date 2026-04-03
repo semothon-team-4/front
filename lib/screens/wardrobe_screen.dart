@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../widgets/share_post_sheet.dart';
 import '../services/analysis_service.dart';
-import '../services/wardrobe_db.dart';
 import 'scan_screen.dart';
 
 class WardrobeScreen extends StatefulWidget {
@@ -18,6 +17,8 @@ class WardrobeScreen extends StatefulWidget {
 class _WardrobeScreenState extends State<WardrobeScreen> {
   List<Map<String, dynamic>> _items = [];
   bool _loading = true;
+  int _totalCount = 0;
+  Map<String, int> _gradeCount = {'A': 0, 'B': 0, 'C': 0, 'D': 0};
   String _selectedCategory = '전체'; // 분류 필터
 
   @override
@@ -35,73 +36,68 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
   }
 
   Future<void> _loadItems() async {
-    Map<String, dynamic> mapLocalItem(Map<String, dynamic> row) {
-      final category = (row["category"] as String?) ?? "기타";
-      final grade = ((row["grade"] as String?) ?? "B").toUpperCase();
-      final createdAt = row["createdAt"]?.toString() ?? "";
-      return {
-        "id": row["id"],
-        "name": row["name"] ?? "스캔한 의류",
-        "category": category,
-        "grade": grade,
-        "desc": row["desc"] ?? "분석 결과를 확인해 주세요.",
-        "recommendation": row["desc"] ?? "분석 결과를 확인해 주세요.",
-        "imageUrl": "",
-        "imagePath": row["imagePath"] ?? "",
-        "createdAt": createdAt,
-        "lastCare": createdAt.isEmpty ? "방금 전" : createdAt,
-        "stainLevel": 0,
-        "damageLevel": 0,
-        "careLabels": const <Map<String, dynamic>>[],
-        "iconColor": _colorForCategory(category),
-        "isLocal": true,
-      };
-    }
-
-    Future<List<Map<String, dynamic>>> loadLocalItems() async {
-      final rows = await WardrobeDB.getAllClothes();
-      return rows.map(mapLocalItem).toList();
-    }
-
     if (mounted) {
       setState(() => _loading = true);
     }
 
     try {
-      final items = await AnalysisService.fetchMyAnalyses();
+      final closet = await AnalysisService.fetchMyCloset();
+      final items = ((closet["items"] as List?) ?? const [])
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+
+      final serverCounts = <String, int>{"A": 0, "B": 0, "C": 0, "D": 0};
+      final rawCounts = Map<String, dynamic>.from(
+        (closet["gradeCounts"] as Map?) ?? {},
+      );
+      for (final key in serverCounts.keys) {
+        serverCounts[key] = (rawCounts[key] as num?)?.toInt() ?? 0;
+      }
+      final serverTotalCount =
+          (closet["totalCount"] as num?)?.toInt() ?? items.length;
+
       final detailedItems = <Map<String, dynamic>>[];
       for (final item in items) {
         final id = item["id"];
         if (id is! int) continue;
-        final detail = await AnalysisService.fetchAnalysisDetail(id);
-        detailedItems.add({
-          ...detail,
-          "iconColor": _colorForCategory((detail["category"] as String?) ?? ""),
-        });
+        try {
+          final detail = await AnalysisService.fetchAnalysisDetail(id);
+          detailedItems.add({
+            ...item,
+            ...detail,
+            "iconColor": _colorForCategory(
+              (detail["category"] as String?) ??
+                  (item["category"] as String?) ??
+                  "",
+            ),
+          });
+        } catch (_) {
+          detailedItems.add({
+            ...item,
+            "iconColor": _colorForCategory((item["category"] as String?) ?? ""),
+            "lastCare": "방금 전",
+          });
+        }
       }
-
-      final resultItems = detailedItems.isNotEmpty
-          ? detailedItems
-          : await loadLocalItems();
 
       if (!mounted) return;
       setState(() {
-        _items = resultItems;
+        _items = detailedItems;
+        _totalCount = serverTotalCount;
+        _gradeCount = serverCounts;
         _loading = false;
       });
     } catch (e) {
-      final localItems = await loadLocalItems();
       if (!mounted) return;
       setState(() {
-        _items = localItems;
+        _items = [];
+        _totalCount = 0;
+        _gradeCount = {"A": 0, "B": 0, "C": 0, "D": 0};
         _loading = false;
       });
-
-      if (localItems.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst("Exception: ", ""))),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst("Exception: ", ""))),
+      );
     }
   }
 
@@ -301,12 +297,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
     final filtered = _selectedCategory == '전체'
         ? _items
         : _items.where((i) => i['category'] == _selectedCategory).toList();
-
-    final gradeCount = <String, int>{'A': 0, 'B': 0, 'C': 0, 'D': 0};
-    for (final item in _items) {
-      final g = (item['grade'] as String?) ?? 'A';
-      gradeCount[g] = (gradeCount[g] ?? 0) + 1;
-    }
+    final gradeCount = _gradeCount;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -322,7 +313,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                       child: _WardrobeHeader(
-                        totalCount: _items.length,
+                        totalCount: _totalCount,
                         gradeCount: gradeCount,
                         onClose: () {
                           if (Navigator.of(context).canPop()) {
@@ -512,7 +503,9 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                               (context, index) => _ClothingCard(
                                 item: filtered[index],
                                 gradeColor: _gradeColor(
-                                  (filtered[index]['grade'] as String?) ?? 'A',
+                                  (filtered[index]['grade'] as String?)
+                                          ?.toUpperCase() ??
+                                      'B',
                                 ),
                                 onTap: () =>
                                     _openAnalysisResult(filtered[index]),
@@ -815,13 +808,23 @@ class _ClothingCard extends StatelessWidget {
                           ],
                         ),
                         child: Center(
-                          child: Text(
-                            item['grade'],
-                            style: TextStyle(
-                              color: gradeColor,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          child: Builder(
+                            builder: (_) {
+                              final grade = (item['grade'] as String?)
+                                  ?.toUpperCase();
+                              final isCareLabelOnly =
+                                  grade == null || grade.isEmpty;
+                              return Text(
+                                isCareLabelOnly ? '케어' : grade,
+                                style: TextStyle(
+                                  color: isCareLabelOnly
+                                      ? const Color(0xFF1A39FF)
+                                      : gradeColor,
+                                  fontSize: isCareLabelOnly ? 10 : 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              );
+                            },
                           ),
                         ),
                       ),
