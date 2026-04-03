@@ -1781,7 +1781,7 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
                       ),
                     ),
                     if (isReceiptVerified) ...[
-                      const Spacer(),
+                      const SizedBox(width: 8),
                       Container(
                         width: 20,
                         height: 20,
