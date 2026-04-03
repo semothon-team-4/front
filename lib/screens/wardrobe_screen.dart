@@ -260,6 +260,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
     );
   }
 
+  // ignore: unused_element
   void _showDetailSheet(Map<String, dynamic> item) {
     final itemGrade = ((item['grade'] as String?) ?? 'TAG').toUpperCase();
 
@@ -713,7 +714,7 @@ class _WardrobeStatCard extends StatelessWidget {
     required this.count,
     required this.title,
     this.subtitle,
-    this.icon,
+    this.icon, // ignore: unused_element_parameter
     required this.textColor,
     required this.gradientColors,
   });
