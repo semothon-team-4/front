@@ -1216,17 +1216,17 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
 
   List<Map<String, String>> _priceItems() {
     return const [
-      {'name': '패딩 드라이 클리닝', 'price': '28,000원'},
-      {'name': '청바지 수선', 'price': '12,000원'},
-      {'name': '셔츠 다림질', 'price': '4,000원'},
+      {'name': '패딩 드라이 클리닝', 'price': '18,000원'},
+      {'name': '청바지 수선', 'price': '7,000원'},
+      {'name': '셔츠 다림질', 'price': '2,000원'},
     ];
   }
 
   List<Map<String, String>> _jugongLaundryPriceItems() {
     return const [
-      {'name': '패딩 드라이 클리닝', 'price': '26,000원'},
+      {'name': '패딩 드라이 클리닝', 'price': '16,000원'},
       {'name': '교복 상하의 세탁', 'price': '9,000원'},
-      {'name': '이불 세탁', 'price': '18,000원'},
+      {'name': '이불 세탁', 'price': '10,000원'},
     ];
   }
 
@@ -1263,6 +1263,101 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
     ];
   }
 
+  bool _isWhiteLaundry(Map<String, dynamic> business) {
+    final name = (business['name']?.toString() ?? '').replaceAll(' ', '');
+    final address = (business['address']?.toString() ?? '').replaceAll(' ', '');
+    return name.contains('하얀세탁소') && address.contains('경기수원시영통구영통동972-8');
+  }
+
+  List<Map<String, dynamic>> _receiptItems(Map<String, dynamic> business) {
+    if (_isWhiteLaundry(business)) {
+      return [
+        {
+          'user': '영통주민1',
+          'date': '2026.04.03',
+          'lines': const [
+            {'name': '패딩 드라이 클리닝', 'price': '18,000원'},
+            {'name': '와이셔츠 세탁', 'price': '4,000원'},
+            {'name': '니트 손세탁', 'price': '8,000원'},
+          ],
+          'total': '28,000원',
+        },
+        {
+          'user': '수선단골',
+          'date': '2026.04.01',
+          'lines': const [
+            {'name': '코트 드라이', 'price': '13,000원'},
+            {'name': '바지 프레스', 'price': '3,000원'},
+            {'name': '운동화 세탁', 'price': '7,000원'},
+          ],
+          'total': '23,000원',
+        },
+        {
+          'user': 'cleanday',
+          'date': '2026.03.29',
+          'lines': const [
+            {'name': '이불 세탁', 'price': '10,000원'},
+            {'name': '셔츠 다림질', 'price': '4,000원'},
+          ],
+          'total': '22,000원',
+        },
+      ];
+    }
+
+    return [
+      {
+        'user': '세탁왕',
+        'date': '2026.03.31',
+        'lines': const [
+          {'name': '패딩 드라이 클리닝', 'price': '18,000원'},
+          {'name': '운동화 세탁', 'price': '3,000원'},
+        ],
+        'total': '33,000원',
+      },
+    ];
+  }
+
+  List<Map<String, String>> _whiteLaundryReviewItems() {
+    return [
+      {
+        'user': '영통맘',
+        'badge': '영수증 인증 완료!',
+        'text': '급하게 맡긴 블라우스랑 슬랙스가 하루 만에 깔끔하게 나왔어요. 얼룩도 잘 빠져서 만족합니다.',
+        'imageUrl': '',
+      },
+      {
+        'user': '수원세탁러버',
+        'badge': '',
+        'text': '이 동네에서 셔츠 다림질 제일 안정적이에요. 가격도 무난하고 맡기면 시간 맞춰 잘 나옵니다.',
+        'imageUrl': '',
+      },
+      {
+        'user': '하얀구름',
+        'badge': '영수증 인증 완료!',
+        'text': '겨울 코트 드라이 맡겼는데 냄새 없이 깔끔하게 정리돼서 좋았어요. 직원분도 친절했습니다.',
+        'imageUrl': '',
+      },
+      {
+        'user': '영통직장인',
+        'badge': '',
+        'text': '출근 전에 맡기고 퇴근길에 찾기 편해서 자주 가요. 바지 프레스 라인도 잘 잡혀 있었습니다.',
+        'imageUrl': '',
+      },
+      {
+        'user': '세탁초보',
+        'badge': '',
+        'text': '니트 손세탁 맡겼는데 줄어듦 없이 잘 나왔어요. 처음 이용했는데 재방문 의사 있습니다.',
+        'imageUrl': '',
+      },
+      {
+        'user': '영통단골',
+        'badge': '영수증 인증 완료!',
+        'text': '패딩 맡길 때마다 상태 설명도 잘해주시고 보관 팁도 알려줘서 믿고 맡기게 됩니다.',
+        'imageUrl': '',
+      },
+    ];
+  }
+
   List<Map<String, String>> _resolvedReviewItems(
     Map<String, dynamic> business,
     String businessName,
@@ -1294,6 +1389,9 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
             },
           )
           .toList();
+    }
+    if (_isWhiteLaundry(business)) {
+      return _whiteLaundryReviewItems();
     }
     return _reviewItems(businessName);
   }
@@ -1532,6 +1630,7 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
 
   Widget _buildPriceTab(Map<String, dynamic> business) {
     final items = _resolvedPriceItems(business);
+    final receipts = _receiptItems(business);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1626,68 +1725,85 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
           ),
         ),
         const SizedBox(height: 12),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFE4E4E4)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Row(
+        ...receipts.map(
+          (receipt) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: const Color(0xFFE4E4E4)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.account_circle_outlined, size: 38),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      '세탁왕',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
+                  Row(
+                    children: [
+                      const Icon(Icons.account_circle_outlined, size: 38),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          receipt['user']?.toString() ?? '사용자',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
-                    ),
+                      Text(
+                        receipt['date']?.toString() ?? '',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF9A9A9A),
+                        ),
+                      ),
+                    ],
                   ),
-                  Text(
-                    '2026.03.31',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF9A9A9A)),
+                  const SizedBox(height: 14),
+                  ...((receipt['lines'] as List?) ?? const []).asMap().entries.map((
+                    entry,
+                  ) {
+                    final line = Map<String, dynamic>.from(entry.value as Map);
+                    return Padding(
+                      padding: EdgeInsets.only(bottom: entry.key == 0 ? 6 : 6),
+                      child: _ReceiptLine(
+                        name: line['name']?.toString() ?? '',
+                        price: line['price']?.toString() ?? '',
+                      ),
+                    );
+                  }),
+                  const Divider(height: 24),
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          '합계',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        receipt['total']?.toString() ?? '',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF335CFF),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    '영수증 인증 완료',
+                    style: TextStyle(fontSize: 13, color: Color(0xFF7F7F7F)),
                   ),
                 ],
               ),
-              SizedBox(height: 14),
-              _ReceiptLine(name: '패딩 드라이 클리닝', price: '30,000원'),
-              SizedBox(height: 6),
-              _ReceiptLine(name: '운동화 세탁', price: '3,000원'),
-              Divider(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '합계',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    '33,000원',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF335CFF),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 8),
-              Text(
-                '영수증 인증 완료',
-                style: TextStyle(fontSize: 13, color: Color(0xFF7F7F7F)),
-              ),
-            ],
+            ),
           ),
         ),
       ],
