@@ -19,7 +19,7 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
   File? _selectedImage;
 
   bool get _canSubmit =>
-      _titleCtrl.text.trim().isNotEmpty || _contentCtrl.text.trim().isNotEmpty;
+      _titleCtrl.text.trim().isNotEmpty && _contentCtrl.text.trim().isNotEmpty;
 
   @override
   void initState() {
