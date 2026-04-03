@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../widgets/analysis_result_view.dart';
 import '../widgets/share_post_sheet.dart';
 import '../services/analysis_service.dart';
 import 'scan_screen.dart';
@@ -156,13 +157,18 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
   }
 
   void _openShareSheet(Map<String, dynamic> item) {
+    final itemName = (item['name'] as String?) ?? '의류';
+    final itemGrade = (item['grade'] as String?) ?? 'TAG';
+    final itemDesc = (item['desc'] as String?) ?? '분석 결과를 확인해 주세요.';
+    final itemLastCare = (item['lastCare'] as String?) ?? '방금 전';
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => SharePostSheet(
-        initialTitle: '${item['name']} 상태 공유 (${item['grade']}등급)',
-        initialContent: '${item['desc']}\n\n마지막 세탁: ${item['lastCare']}',
+        initialTitle: '$itemName 상태 공유 (${itemGrade}등급)',
+        initialContent: '$itemDesc\n\n마지막 세탁: $itemLastCare',
         category: '의류상태',
         imagePreview: Container(
           height: 120,
@@ -184,7 +190,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                 right: 0,
                 bottom: 10,
                 child: Text(
-                  item['name'],
+                  itemName,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color:
@@ -239,15 +245,24 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ScanAnalysisResultScreen(
+        builder: (_) => AnalysisResultView(
+          image: null,
+          isCareLabel: false,
           analysisResult: analysisResult,
           onNavigate: widget.onNavigate,
+          onBack: () => Navigator.of(context).pop(),
+          onSave: () {},
+          onReset: () => Navigator.of(context).pop(),
+          onSaveImage: () {},
+          onStartClothingScan: () {},
         ),
       ),
     );
   }
 
   void _showDetailSheet(Map<String, dynamic> item) {
+    final itemGrade = ((item['grade'] as String?) ?? 'TAG').toUpperCase();
+
     showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
@@ -256,8 +271,8 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
       ),
       builder: (_) => _ClothingDetailSheet(
         item: item,
-        gradeColor: _gradeColor(item['grade'] as String),
-        gradeDesc: _gradeDesc(item['grade'] as String),
+        gradeColor: _gradeColor(itemGrade),
+        gradeDesc: _gradeDesc(itemGrade),
         onShare: () => _openShareSheet(item),
       ),
     ).then((result) async {
@@ -404,7 +419,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                                     top: Radius.circular(20),
                                   ),
                                 ),
-                                builder: (_) => Column(
+                                builder: (sheetContext) => Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     const SizedBox(height: 12),
@@ -429,7 +444,8 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                                                 color: Color(0xFF1A39FF),
                                               )
                                             : null,
-                                        onTap: () => Navigator.pop(context, c),
+                                        onTap: () =>
+                                            Navigator.pop(sheetContext, c),
                                       ),
                                     ),
                                     const SizedBox(height: 16),
@@ -790,6 +806,9 @@ class _ClothingCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final imageUrl = (item['imageUrl'] as String?) ?? '';
     final imagePath = (item['imagePath'] as String?) ?? '';
+    final itemName = (item['name'] as String?) ?? '이름 없음';
+    final itemCategory = (item['category'] as String?) ?? '기타';
+    final itemLastCare = (item['lastCare'] as String?) ?? '방금 전';
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -907,7 +926,7 @@ class _ClothingCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    item['name'],
+                    itemName,
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
@@ -928,7 +947,7 @@ class _ClothingCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          item['category'],
+                          itemCategory,
                           style: const TextStyle(
                             fontSize: 10,
                             color: Color(0xFF1A39FF),
@@ -937,7 +956,7 @@ class _ClothingCard extends StatelessWidget {
                       ),
                       const Spacer(),
                       Text(
-                        item['lastCare'],
+                        itemLastCare,
                         style: const TextStyle(
                           fontSize: 10,
                           color: Color(0xFFB0BEC5),
@@ -973,6 +992,11 @@ class _ClothingDetailSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final imageUrl = (item['imageUrl'] as String?) ?? '';
     final imagePath = (item['imagePath'] as String?) ?? '';
+    final itemName = (item['name'] as String?) ?? '이름 없는 의류';
+    final itemCategory = (item['category'] as String?) ?? '기타';
+    final itemGrade = ((item['grade'] as String?) ?? 'TAG').toUpperCase();
+    final itemDesc = (item['desc'] as String?) ?? '분석 결과를 확인해 주세요.';
+    final itemLastCare = (item['lastCare'] as String?) ?? '방금 전';
     return Container(
       height: MediaQuery.of(context).size.height * 0.65,
       decoration: const BoxDecoration(
@@ -1029,7 +1053,7 @@ class _ClothingDetailSheet extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                item['name'],
+                                itemName,
                                 style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -1038,7 +1062,7 @@ class _ClothingDetailSheet extends StatelessWidget {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                item['category'],
+                                itemCategory,
                                 style: const TextStyle(
                                   fontSize: 13,
                                   color: Color(0xFF9E9E9E),
@@ -1047,7 +1071,7 @@ class _ClothingDetailSheet extends StatelessWidget {
                               const SizedBox(height: 10),
                               // 등급 표시바
                               _GradeBar(
-                                grade: item['grade'] as String,
+                                grade: itemGrade,
                                 gradeColor: gradeColor,
                               ),
                             ],
@@ -1083,7 +1107,7 @@ class _ClothingDetailSheet extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
-                                '${item['grade']}등급 · $gradeDesc',
+                                '$itemGrade등급 · $gradeDesc',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 12,
@@ -1095,7 +1119,7 @@ class _ClothingDetailSheet extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          item['desc'],
+                          itemDesc,
                           style: TextStyle(
                             fontSize: 13,
                             color: gradeColor,
@@ -1115,7 +1139,7 @@ class _ClothingDetailSheet extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        '마지막 세탁: ${item['lastCare']}',
+                        '마지막 세탁: $itemLastCare',
                         style: const TextStyle(
                           fontSize: 12,
                           color: Color(0xFF9E9E9E),
