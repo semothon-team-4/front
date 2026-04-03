@@ -10,7 +10,6 @@ import '../services/business_store_service.dart';
 import '../services/image_service.dart';
 import '../services/profile_activity_service.dart';
 import '../services/shop_service.dart';
-import 'community_screen.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -350,6 +349,11 @@ class _MapScreenState extends State<MapScreen> {
   @override
   Widget build(BuildContext context) {
     final sorted = _filteredAndSorted;
+    final mediaQuery = MediaQuery.of(context);
+    final compactSheetMaxExtent =
+        ((mediaQuery.size.height - (mediaQuery.padding.top + 18)) /
+                mediaQuery.size.height)
+            .clamp(0.12, 1.0);
     return Scaffold(
       body: Stack(
         children: [
@@ -471,9 +475,9 @@ class _MapScreenState extends State<MapScreen> {
               controller: _compactSheetCtrl,
               initialChildSize: 0.35,
               minChildSize: 0.12,
-              maxChildSize: 1.0,
+              maxChildSize: compactSheetMaxExtent,
               snap: true,
-              snapSizes: const [0.12, 0.35, 1.0],
+              snapSizes: [0.12, 0.35, compactSheetMaxExtent],
               builder: (context, scrollCtrl) => _BusinessCompactCard(
                 key: ValueKey(
                   _selectedBusiness!['id'] ?? _selectedBusiness!['name'],
@@ -482,6 +486,7 @@ class _MapScreenState extends State<MapScreen> {
                 scrollCtrl: scrollCtrl,
                 compactSheetCtrl: _compactSheetCtrl,
                 currentExtent: _compactSheetExtent,
+                maxExtent: compactSheetMaxExtent,
                 onClose: () async {
                   setState(() => _selectedBusiness = null);
                   await _refreshMapMarkers();
@@ -506,7 +511,6 @@ class _MapScreenState extends State<MapScreen> {
                     await _refreshMapMarkers();
                   }
                 },
-                onCommunity: () => showCommunityWriteSheet(context),
               ),
             ),
 
@@ -1126,10 +1130,10 @@ class _BusinessCompactCard extends StatefulWidget {
   final ScrollController scrollCtrl;
   final DraggableScrollableController compactSheetCtrl;
   final double currentExtent;
+  final double maxExtent;
   final VoidCallback onClose;
   final VoidCallback onLike;
   final VoidCallback onWriteReview;
-  final VoidCallback onCommunity;
 
   const _BusinessCompactCard({
     super.key,
@@ -1137,10 +1141,10 @@ class _BusinessCompactCard extends StatefulWidget {
     required this.scrollCtrl,
     required this.compactSheetCtrl,
     required this.currentExtent,
+    required this.maxExtent,
     required this.onClose,
     required this.onLike,
     required this.onWriteReview,
-    required this.onCommunity,
   });
 
   @override
@@ -1152,7 +1156,6 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
   bool _isLoadingDetail = false;
   String? _detailError;
   Map<String, dynamic>? _shopDetail;
-  List<Map<String, dynamic>> _shopPrices = const [];
   List<Map<String, dynamic>> _shopReviews = const [];
   int _detailRequestId = 0;
 
@@ -1184,7 +1187,6 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
       _isLoadingDetail = true;
       _detailError = null;
       _shopDetail = null;
-      _shopPrices = const [];
       _shopReviews = const [];
     });
 
@@ -1198,7 +1200,6 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
       if (!mounted || requestId != _detailRequestId) return;
       setState(() {
         _shopDetail = results[0] as Map<String, dynamic>;
-        _shopPrices = List<Map<String, dynamic>>.from(results[1] as List);
         _shopReviews = List<Map<String, dynamic>>.from(results[2] as List);
       });
     } catch (e) {
@@ -1213,50 +1214,36 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
     }
   }
 
-  List<Map<String, String>> _priceItems(String type) {
-    if (type == '수선집') {
-      return const [
-        {'name': '기장 수선', 'price': '8,000원'},
-        {'name': '지퍼 교체', 'price': '15,000원'},
-        {'name': '단추 교체', 'price': '5,000원'},
-      ];
-    }
-
+  List<Map<String, String>> _priceItems() {
     return const [
-      {'name': '셔츠 다림질', 'price': '3,000원'},
-      {'name': '패딩 드라이 클리닝', 'price': '30,000원'},
-      {'name': '신발 얼룩 제거', 'price': '40,000원'},
+      {'name': '패딩 드라이 클리닝', 'price': '28,000원'},
+      {'name': '청바지 수선', 'price': '12,000원'},
+      {'name': '셔츠 다림질', 'price': '4,000원'},
+    ];
+  }
+
+  List<Map<String, String>> _jugongLaundryPriceItems() {
+    return const [
+      {'name': '패딩 드라이 클리닝', 'price': '26,000원'},
+      {'name': '교복 상하의 세탁', 'price': '9,000원'},
+      {'name': '이불 세탁', 'price': '18,000원'},
     ];
   }
 
   List<Map<String, String>> _resolvedPriceItems(Map<String, dynamic> business) {
-    if (_shopPrices.isNotEmpty) {
-      return _shopPrices
-          .map(
-            (item) => {
-              'name': item['category']?.toString() ?? '가격 정보',
-              'price': _formatPrice(item['price']),
-            },
-          )
-          .toList();
+    final name = (business['name']?.toString() ?? '').replaceAll(' ', '');
+    final address = (business['address']?.toString() ?? '').replaceAll(' ', '');
+
+    final isJugongLaundry = name.contains('주공세탁소');
+    final isJugongAddress =
+        address.contains('경기수원시영통구영통동964-8') ||
+        address.contains('경기수원시영통구영통로290번길23');
+
+    if (isJugongLaundry && isJugongAddress) {
+      return _jugongLaundryPriceItems();
     }
 
-    final raw = business['priceItems'];
-    if (raw is List && raw.isNotEmpty) {
-      return raw
-          .whereType<Map>()
-          .map(
-            (item) => {
-              'name': item['name']?.toString() ?? '',
-              'price': item['price']?.toString() ?? '',
-            },
-          )
-          .where(
-            (item) => item['name']!.isNotEmpty || item['price']!.isNotEmpty,
-          )
-          .toList();
-    }
-    return _priceItems(business['type'] as String);
+    return _priceItems();
   }
 
   List<Map<String, String>> _reviewItems(String businessName) {
@@ -1334,24 +1321,6 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
       return [_resolveImageUrl(imageUrl)];
     }
     return const [];
-  }
-
-  String _formatPrice(dynamic price) {
-    if (price == null) return '';
-    final number = price is num
-        ? price.toInt()
-        : int.tryParse(price.toString());
-    if (number == null) return price.toString();
-    final digits = number.toString();
-    final buffer = StringBuffer();
-    for (var i = 0; i < digits.length; i++) {
-      final reverseIndex = digits.length - i;
-      buffer.write(digits[i]);
-      if (reverseIndex > 1 && reverseIndex % 3 == 1) {
-        buffer.write(',');
-      }
-    }
-    return '${buffer.toString()}원';
   }
 
   String _firstImage(Map<String, dynamic> item) {
@@ -1466,14 +1435,6 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
       return (_shopDetail!['reviewCount'] as num).toInt();
     }
     return (business['reviews'] as int?) ?? 0;
-  }
-
-  void _collapseSheet() {
-    widget.compactSheetCtrl.animateTo(
-      0.35,
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOut,
-    );
   }
 
   Widget _buildTabButton(String label, int index) {
@@ -1596,6 +1557,10 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
               const SizedBox(height: 10),
               ...items.asMap().entries.map((entry) {
                 final item = entry.value;
+                final rank = entry.key + 1;
+                final rankColor = rank == 1
+                    ? const Color(0xFF335CFF)
+                    : const Color(0xFF6BB8D6);
                 return Container(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   decoration: BoxDecoration(
@@ -1609,6 +1574,24 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
                   ),
                   child: Row(
                     children: [
+                      Container(
+                        width: 28,
+                        height: 28,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: rankColor,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          '$rank',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           item['name']!,
@@ -1896,7 +1879,7 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
     ], '');
     final photoUrls = _resolvedPhotoUrls(business, imageUrl);
     final isCollapsed = widget.currentExtent < 0.2;
-    final isExpanded = widget.currentExtent > 0.8;
+    final isExpanded = widget.currentExtent > (widget.maxExtent - 0.08);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
@@ -1920,11 +1903,11 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
                 final delta = details.primaryDelta ?? 0;
                 final screenH = MediaQuery.of(context).size.height;
                 final newExtent = (widget.currentExtent - (delta / screenH))
-                    .clamp(0.12, 1.0);
+                    .clamp(0.12, widget.maxExtent);
                 widget.compactSheetCtrl.jumpTo(newExtent);
               },
               onVerticalDragEnd: (details) {
-                const snapSizes = [0.12, 0.35, 1.0];
+                final snapSizes = [0.12, 0.35, widget.maxExtent];
                 double closest = snapSizes.reduce(
                   (a, b) =>
                       (a - widget.currentExtent).abs() <
@@ -1959,22 +1942,7 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
               controller: widget.scrollCtrl,
               padding: EdgeInsets.fromLTRB(16, isExpanded ? 8 : 0, 16, 20),
               children: [
-                if (isExpanded) ...[
-                  Row(
-                    children: [
-                      GestureDetector(
-                        onTap: _collapseSheet,
-                        child: const Icon(
-                          Icons.arrow_back,
-                          size: 28,
-                          color: Color(0xFF1D1B20),
-                        ),
-                      ),
-                      const Spacer(),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-                ],
+                if (isExpanded) const SizedBox(height: 18),
 
                 Row(
                   children: [
@@ -2139,6 +2107,7 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
                     ),
                     const SizedBox(height: 18),
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Expanded(
                           child: ClipRRect(
@@ -2160,21 +2129,13 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
                           ),
                         ),
                         const SizedBox(width: 10),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            _RoundActionButton(
-                              label: '리뷰 쓰기',
-                              icon: Icons.add,
-                              onTap: widget.onWriteReview,
-                            ),
-                            const SizedBox(height: 10),
-                            _RoundActionButton(
-                              label: '커뮤니티 공유',
-                              icon: Icons.share,
-                              onTap: widget.onCommunity,
-                            ),
-                          ],
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: _RoundActionButton(
+                            label: '리뷰 쓰기',
+                            icon: Icons.add,
+                            onTap: widget.onWriteReview,
+                          ),
                         ),
                       ],
                     ),
@@ -2235,6 +2196,7 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
                         onTap: widget.onWriteReview,
                       ),
                     ),
+                    const SizedBox(height: 26),
                   ],
                 ],
               ],
@@ -2477,7 +2439,11 @@ class _ReviewWriteScreenState extends State<_ReviewWriteScreen> {
   Future<void> _pickPhoto() async {
     final file = await ImageService.showPickerSheet(context);
     if (file == null || !mounted) return;
-    setState(() => _photos.add(file));
+    setState(() {
+      _photos
+        ..clear()
+        ..add(file);
+    });
   }
 
   bool get _showReviewPlaceholder =>
@@ -2654,7 +2620,7 @@ class _ReviewWriteScreenState extends State<_ReviewWriteScreen> {
               onTap: _pickPhoto,
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 28),
+                height: 188,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(18),
                   border: Border.all(
@@ -2662,52 +2628,63 @@ class _ReviewWriteScreenState extends State<_ReviewWriteScreen> {
                     style: BorderStyle.solid,
                   ),
                 ),
-                child: Column(
-                  children: [
-                    const Text(
-                      '사진 추가',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF1D1B20),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    Container(
-                      width: 52,
-                      height: 52,
-                      decoration: const BoxDecoration(
-                        color: Colors.black,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.add,
-                        color: Colors.white,
-                        size: 30,
-                      ),
-                    ),
-                    if (_photos.isNotEmpty) ...[
-                      const SizedBox(height: 14),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: _photos
-                            .map(
-                              (file) => ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: Image.file(
-                                  file,
-                                  width: 74,
-                                  height: 74,
-                                  fit: BoxFit.cover,
+                clipBehavior: Clip.antiAlias,
+                child: _photos.isNotEmpty
+                    ? Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Image.file(_photos.first, fit: BoxFit.cover),
+                          Positioned(
+                            top: 12,
+                            right: 12,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.6),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                '사진 변경',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
                                 ),
                               ),
-                            )
-                            .toList(),
+                            ),
+                          ),
+                        ],
+                      )
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            '사진 추가',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF1D1B20),
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          Container(
+                            width: 52,
+                            height: 52,
+                            decoration: const BoxDecoration(
+                              color: Colors.black,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.add,
+                              color: Colors.white,
+                              size: 30,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ],
-                ),
               ),
             ),
           ],

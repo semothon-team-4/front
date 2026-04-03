@@ -57,24 +57,6 @@ class _LoginScreenState extends State<LoginScreen> {
     ).push(MaterialPageRoute(builder: (_) => const SignUpScreen()));
   }
 
-  Widget _linkText(String text, VoidCallback? onTap) => GestureDetector(
-    onTap: onTap,
-    child: Text(
-      text,
-      style: TextStyle(
-        fontSize: 13,
-        color: onTap != null
-            ? const Color(0xFF1A39FF)
-            : const Color(0xFF9E9E9E),
-      ),
-    ),
-  );
-
-  Widget _dot() => const Padding(
-    padding: EdgeInsets.symmetric(horizontal: 6),
-    child: Text('·', style: TextStyle(fontSize: 13, color: Color(0xFF9E9E9E))),
-  );
-
   void _showSnack(String message) {
     ScaffoldMessenger.of(
       context,
@@ -161,15 +143,22 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              // 아이디 찾기 · 비밀번호 찾기 · 회원가입
+              // 아직 회원이 아니신가요? 회원가입
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _linkText('아이디 찾기', null),
-                  _dot(),
-                  _linkText('비밀번호 찾기', null),
-                  _dot(),
-                  _linkText('회원가입', _goSignUp),
+                  const Text(
+                    '아직 회원이 아니신가요?',
+                    style: TextStyle(fontSize: 13, color: Color(0xFF9E9E9E)),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: _goSignUp,
+                    child: const Text(
+                      '회원가입',
+                      style: TextStyle(fontSize: 13, color: Color(0xFF1A39FF)),
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 40),
