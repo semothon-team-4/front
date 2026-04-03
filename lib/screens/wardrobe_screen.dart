@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../widgets/share_post_sheet.dart';
 import '../services/analysis_service.dart';
 import '../services/wardrobe_db.dart';
+import 'scan_screen.dart';
 
 class WardrobeScreen extends StatefulWidget {
   final ValueChanged<int>? onNavigate;
@@ -200,6 +201,43 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
         );
       }
     });
+  }
+
+  Future<void> _openAnalysisResult(Map<String, dynamic> item) async {
+    final rawId = item["id"];
+    final analysisId = rawId is int
+        ? rawId
+        : (rawId is num
+              ? rawId.toInt()
+              : int.tryParse(rawId?.toString() ?? ""));
+
+    var analysisResult = Map<String, dynamic>.from(item);
+
+    if (analysisId != null) {
+      try {
+        final detail = await AnalysisService.fetchAnalysisDetail(analysisId);
+        analysisResult = {...analysisResult, ...detail};
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(e.toString().replaceFirst("Exception: ", "")),
+            ),
+          );
+        }
+      }
+    }
+
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ScanAnalysisResultScreen(
+          analysisResult: analysisResult,
+          onNavigate: widget.onNavigate,
+        ),
+      ),
+    );
   }
 
   void _showDetailSheet(Map<String, dynamic> item) {
@@ -476,7 +514,8 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                                 gradeColor: _gradeColor(
                                   (filtered[index]['grade'] as String?) ?? 'A',
                                 ),
-                                onTap: () => _showDetailSheet(filtered[index]),
+                                onTap: () =>
+                                    _openAnalysisResult(filtered[index]),
                                 onShare: () => _openShareSheet(filtered[index]),
                               ),
                               childCount: filtered.length,

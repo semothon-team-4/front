@@ -847,6 +847,7 @@ class _TagScanResultScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 20),
+                    const SizedBox(height: 20),
 
                     // 세탁 기호 안내
                     const Text(
@@ -1350,6 +1351,36 @@ class _TagScanResultScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class ScanAnalysisResultScreen extends StatelessWidget {
+  final Map<String, dynamic> analysisResult;
+  final ValueChanged<int>? onNavigate;
+
+  const ScanAnalysisResultScreen({
+    super.key,
+    required this.analysisResult,
+    this.onNavigate,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _TagScanResultScreen(
+      image: null,
+      mode: _ScanMode.clothing,
+      analysisResult: analysisResult,
+      onNavigate: onNavigate,
+      onBack: () => Navigator.of(context).pop(),
+      onSave: () {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('이미 옷장에 등록된 의류입니다.')));
+      },
+      onSaveImage: () async {},
+      onReset: () => Navigator.of(context).pop(),
+      onStartClothingScan: () => Navigator.of(context).pop(),
     );
   }
 }
