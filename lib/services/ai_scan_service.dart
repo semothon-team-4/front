@@ -18,11 +18,6 @@ class AiScanService {
       path: '/predict/care-label',
       image: image,
     );
-    const encoder = JsonEncoder.withIndent('  ');
-    _printJsonToConsole(
-      'Care label scan response:',
-      encoder.convert(decoded),
-    );
     return {
       'id': 'care_${DateTime.now().millisecondsSinceEpoch}',
       'careLabels': _normalizeCareLabels(decoded),
@@ -36,6 +31,11 @@ class AiScanService {
     final decoded = await _postMultipart(
       path: '/predict/cloth-grade',
       image: image,
+    );
+    const encoder = JsonEncoder.withIndent('  ');
+    _printJsonToConsole(
+      'Cloth grade scan response:',
+      encoder.convert(decoded),
     );
 
     return {
@@ -61,6 +61,7 @@ class AiScanService {
       'needWash': decoded['need_wash'] == true,
       'needRepair': decoded['need_repair'] == true,
       'action': _asNullableString(decoded['action']),
+      'actionReason': _asNullableString(decoded['action_reason']),
       'reason': _asNullableString(decoded['reason']),
       'totalScore': _asNum(decoded['total_score']),
       'raw': decoded,
@@ -264,6 +265,9 @@ class AiScanService {
   }
 
   static String _buildGuideTitle(Map<String, dynamic> decoded) {
+    final actionReason = _asNullableString(decoded['action_reason']);
+    if (actionReason != null && actionReason.isNotEmpty) return actionReason;
+
     final reason = _asNullableString(decoded['reason']);
     if (reason != null && reason.isNotEmpty) return reason;
 
