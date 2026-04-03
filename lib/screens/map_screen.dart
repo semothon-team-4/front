@@ -2413,7 +2413,7 @@ class _ReviewWriteScreenState extends State<_ReviewWriteScreen> {
         }
       }
 
-      await ShopService.writeReview(
+      final reviewResponse = await ShopService.writeReview(
         shopId: shopId,
         receiptId: receiptId,
         rating: _rating,
@@ -2421,13 +2421,27 @@ class _ReviewWriteScreenState extends State<_ReviewWriteScreen> {
         images: _photos,
       );
 
+      final reviewImages = (reviewResponse['images'] as List? ?? const [])
+          .map((item) => item?.toString() ?? '')
+          .where((item) => item.isNotEmpty)
+          .toList();
+
       ProfileActivityService.addMyReview({
-        'shopId': shopId,
+        'id': reviewResponse['id'],
+        'shopId': (reviewResponse['shopId'] as num?)?.toInt() ?? shopId,
         'shopName': widget.business['name']?.toString() ?? '세탁소',
-        'rating': _rating,
-        'content': _textCtrl.text.trim(),
-        'createdAt': DateTime.now().toIso8601String(),
-        'imagePath': _photos.isNotEmpty ? _photos.first.path : null,
+        'rating': (reviewResponse['rating'] as num?)?.toInt() ?? _rating,
+        'content':
+            reviewResponse['content']?.toString() ?? _textCtrl.text.trim(),
+        'createdAt':
+            reviewResponse['createdAt']?.toString() ??
+            DateTime.now().toIso8601String(),
+        'receiptId':
+            (reviewResponse['receiptId'] as num?)?.toInt() ?? receiptId,
+        'images': reviewImages,
+        'imagePath': reviewImages.isNotEmpty
+            ? reviewImages.first
+            : (_photos.isNotEmpty ? _photos.first.path : null),
       });
 
       if (!mounted) return;

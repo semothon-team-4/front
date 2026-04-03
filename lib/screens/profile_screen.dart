@@ -803,6 +803,46 @@ class _MyReviewCard extends StatelessWidget {
 
   const _MyReviewCard({required this.review});
 
+  Widget _buildReviewImage() {
+    final rawImage = review['imagePath']?.toString() ?? '';
+    final images = (review['images'] as List? ?? const [])
+        .map((item) => item?.toString() ?? '')
+        .where((item) => item.isNotEmpty)
+        .toList();
+    final image = images.isNotEmpty ? images.first : rawImage;
+
+    if (image.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final isRemote =
+        image.startsWith('http://') || image.startsWith('https://');
+    final file = isRemote ? null : File(image);
+    final hasLocalImage = file != null && file.existsSync();
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: hasLocalImage
+          ? Image.file(file, width: 84, height: 84, fit: BoxFit.cover)
+          : Image.network(
+              image,
+              width: 84,
+              height: 84,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => Container(
+                width: 84,
+                height: 84,
+                color: const Color(0xFFF1F5F9),
+                alignment: Alignment.center,
+                child: const Icon(
+                  Icons.image_outlined,
+                  color: Color(0xFF94A3B8),
+                ),
+              ),
+            ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final rating = (review['rating'] as num?)?.toInt() ?? 0;
@@ -856,17 +896,10 @@ class _MyReviewCard extends StatelessWidget {
               color: Color(0xFF4B5563),
             ),
           ),
-          if ((review['imagePath']?.toString() ?? '').isNotEmpty) ...[
+          if (((review['imagePath']?.toString() ?? '').isNotEmpty) ||
+              ((review['images'] as List? ?? const []).isNotEmpty)) ...[
             const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.file(
-                File(review['imagePath'].toString()),
-                width: 84,
-                height: 84,
-                fit: BoxFit.cover,
-              ),
-            ),
+            _buildReviewImage(),
           ],
         ],
       ),
