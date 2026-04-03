@@ -514,11 +514,6 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                             delegate: SliverChildBuilderDelegate(
                               (context, index) => _ClothingCard(
                                 item: filtered[index],
-                                gradeColor: _gradeColor(
-                                  (filtered[index]['grade'] as String?)
-                                          ?.toUpperCase() ??
-                                      'B',
-                                ),
                                 onTap: () =>
                                     _openAnalysisResult(filtered[index]),
                                 onShare: () => _openShareSheet(filtered[index]),
@@ -775,13 +770,11 @@ class _WardrobeStatCard extends StatelessWidget {
 
 class _ClothingCard extends StatelessWidget {
   final Map<String, dynamic> item;
-  final Color gradeColor;
   final VoidCallback onTap;
   final VoidCallback onShare;
 
   const _ClothingCard({
     required this.item,
-    required this.gradeColor,
     required this.onTap,
     required this.onShare,
   });
@@ -790,6 +783,16 @@ class _ClothingCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final imageUrl = (item['imageUrl'] as String?) ?? '';
     final imagePath = (item['imagePath'] as String?) ?? '';
+    final grade = (item['grade'] as String?)?.toUpperCase();
+    final isTag = grade == null || grade.isEmpty;
+    final badgeText = isTag ? 'TAG' : grade;
+    final badgeColor = switch (badgeText) {
+      'A' => const Color(0xFFFF9EA8),
+      'B' => const Color(0xFFFFC39A),
+      'C' => const Color(0xFFFFE88F),
+      'D' => const Color(0xFFC9FF74),
+      _ => const Color(0xFF8EDBF1),
+    };
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -841,6 +844,10 @@ class _ClothingCard extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.95),
+                            width: 1.4,
+                          ),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withValues(alpha: 0.12),
@@ -849,23 +856,13 @@ class _ClothingCard extends StatelessWidget {
                           ],
                         ),
                         child: Center(
-                          child: Builder(
-                            builder: (_) {
-                              final grade = (item['grade'] as String?)
-                                  ?.toUpperCase();
-                              final isCareLabelOnly =
-                                  grade == null || grade.isEmpty;
-                              return Text(
-                                isCareLabelOnly ? 'TAG' : grade,
-                                style: TextStyle(
-                                  color: isCareLabelOnly
-                                      ? const Color(0xFF1A39FF)
-                                      : gradeColor,
-                                  fontSize: isCareLabelOnly ? 10 : 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              );
-                            },
+                          child: Text(
+                            badgeText,
+                            style: TextStyle(
+                              color: badgeColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
                       ),

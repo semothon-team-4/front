@@ -581,33 +581,88 @@ class _MapScreenState extends State<MapScreen> {
                                     ),
                                   ),
                                   const Spacer(),
-                                  // 드롭다운
-                                  DropdownButtonHideUnderline(
-                                    child: DropdownButton<int>(
-                                      value: _selectedType,
-                                      icon: const Icon(
-                                        Icons.arrow_drop_down,
-                                        color: Colors.black,
-                                      ),
-                                      onChanged: (v) =>
-                                          setState(() => _selectedType = v!),
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.black,
-                                      ),
-                                      items: const [
-                                        DropdownMenuItem(
-                                          value: 0,
-                                          child: Text('전체'),
+                                  // 타입 드롭다운 (전체/세탁소/수선집)
+                                  PopupMenuButton<int>(
+                                    initialValue: _selectedType,
+                                    onSelected: (v) =>
+                                        setState(() => _selectedType = v),
+                                    offset: const Offset(0, 30),
+                                    padding: EdgeInsets.zero,
+                                    color: Colors.white,
+                                    elevation: 6,
+                                    constraints: const BoxConstraints(
+                                      minWidth: 116,
+                                      maxWidth: 116,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    itemBuilder: (context) => [
+                                      PopupMenuItem<int>(
+                                        value: 0,
+                                        height: 40,
+                                        child: Text(
+                                          '전체',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                            color: _selectedType == 0
+                                                ? const Color(0xFF1A39FF)
+                                                : const Color(0xFF3B3B3B),
+                                          ),
                                         ),
-                                        DropdownMenuItem(
-                                          value: 1,
-                                          child: Text('세탁소'),
+                                      ),
+                                      const PopupMenuDivider(height: 1),
+                                      PopupMenuItem<int>(
+                                        value: 1,
+                                        height: 40,
+                                        child: Text(
+                                          '세탁소',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                            color: _selectedType == 1
+                                                ? const Color(0xFF1A39FF)
+                                                : const Color(0xFF3B3B3B),
+                                          ),
                                         ),
-                                        DropdownMenuItem(
-                                          value: 2,
-                                          child: Text('수선집'),
+                                      ),
+                                      const PopupMenuDivider(height: 1),
+                                      PopupMenuItem<int>(
+                                        value: 2,
+                                        height: 40,
+                                        child: Text(
+                                          '수선집',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                            color: _selectedType == 2
+                                                ? const Color(0xFF1A39FF)
+                                                : const Color(0xFF3B3B3B),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          _selectedType == 0
+                                              ? '전체'
+                                              : (_selectedType == 1
+                                                    ? '세탁소'
+                                                    : '수선집'),
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                            color: Color(0xFF2F2F35),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        const Icon(
+                                          Icons.arrow_drop_down,
+                                          size: 30,
+                                          color: Color(0xFF2F2F35),
                                         ),
                                       ],
                                     ),
@@ -1067,7 +1122,6 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
   List<Map<String, dynamic>> _shopPrices = const [];
   List<Map<String, dynamic>> _shopReviews = const [];
   int _detailRequestId = 0;
-  final Set<String> _expandedReviewBadges = <String>{};
 
   @override
   void initState() {
@@ -1301,10 +1355,6 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
       return (_shopDetail!['rate'] as num).toDouble();
     }
     return (business['rating'] as double?) ?? 0;
-  }
-
-  String _reviewBadgeKey(Map<String, String> item) {
-    return '${item['user']}|${item['text']}';
   }
 
   int _resolvedReviewCount(Map<String, dynamic> business) {
@@ -1604,8 +1654,7 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
         ),
         const SizedBox(height: 14),
         ...items.map((item) {
-          final badgeKey = _reviewBadgeKey(item);
-          final showBadgeText = _expandedReviewBadges.contains(badgeKey);
+          final isReceiptVerified = item['badge']!.isNotEmpty;
           return Container(
             width: double.infinity,
             margin: const EdgeInsets.only(bottom: 14),
@@ -1630,77 +1679,19 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    if (item['badge']!.isNotEmpty) ...[
-                      const SizedBox(width: 6),
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            if (showBadgeText) {
-                              _expandedReviewBadges.remove(badgeKey);
-                            } else {
-                              _expandedReviewBadges.add(badgeKey);
-                            }
-                          });
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 180),
-                          curve: Curves.easeOut,
-                          padding: EdgeInsets.symmetric(
-                            horizontal: showBadgeText ? 10 : 0,
-                            vertical: showBadgeText ? 5 : 0,
-                          ),
-                          decoration: BoxDecoration(
-                            color: showBadgeText
-                                ? const Color(0xFF8FEAFD)
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 18,
-                                height: 18,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF43A047),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.check,
-                                  size: 12,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 180),
-                                transitionBuilder: (child, animation) =>
-                                    FadeTransition(
-                                      opacity: animation,
-                                      child: SizeTransition(
-                                        sizeFactor: animation,
-                                        axis: Axis.horizontal,
-                                        child: child,
-                                      ),
-                                    ),
-                                child: showBadgeText
-                                    ? Padding(
-                                        key: const ValueKey('badgeText'),
-                                        padding: const EdgeInsets.only(left: 6),
-                                        child: const Text(
-                                          '영수증 리뷰 완료 !',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w700,
-                                            color: Color(0xFF2B7B92),
-                                          ),
-                                        ),
-                                      )
-                                    : const SizedBox.shrink(
-                                        key: ValueKey('badgeEmpty'),
-                                      ),
-                              ),
-                            ],
-                          ),
+                    if (isReceiptVerified) ...[
+                      const Spacer(),
+                      Container(
+                        width: 20,
+                        height: 20,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF43A047),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.check,
+                          size: 12,
+                          color: Colors.white,
                         ),
                       ),
                     ],
@@ -1745,40 +1736,6 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
           );
         }),
       ],
-    );
-  }
-
-  Widget _buildPhotoTab(List<String> photoUrls, String? imageUrl) {
-    final photos = photoUrls.isEmpty && (imageUrl ?? '').isNotEmpty
-        ? [imageUrl!]
-        : photoUrls;
-    return Padding(
-      padding: const EdgeInsets.only(top: 18),
-      child: GridView.count(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 1,
-        children: photos.isEmpty
-            ? [
-                Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFD9D9D9),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ]
-            : photos
-                  .map(
-                    (url) => ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: _BusinessThumbnail(imageUrl: url),
-                    ),
-                  )
-                  .toList(),
-      ),
     );
   }
 
@@ -1967,11 +1924,9 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
                                     color: const Color(0xFFD4D4D4),
                                   ),
                                 ),
-                                child: Icon(
-                                  isLiked
-                                      ? Icons.favorite
-                                      : Icons.favorite_border,
-                                  color: const Color(0xFFFF7B8F),
+                                child: const Icon(
+                                  Icons.close,
+                                  color: Color(0xFF9E9E9E),
                                   size: 22,
                                 ),
                               )
@@ -2141,7 +2096,6 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
                         _buildTabButton('홈', 0),
                         _buildTabButton('가격', 1),
                         _buildTabButton('리뷰', 2),
-                        _buildTabButton('사진', 3),
                       ],
                     ),
                     const Divider(height: 1, color: Color(0xFFE1E1E1)),
@@ -2161,7 +2115,6 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
                         reviews: reviews,
                         businessName: name,
                       ),
-                    if (_selectedTab == 3) _buildPhotoTab(photoUrls, imageUrl),
                     const SizedBox(height: 18),
                     Align(
                       alignment: Alignment.centerRight,
@@ -2327,12 +2280,6 @@ class _ReviewWriteScreenState extends State<_ReviewWriteScreen> {
       ).showSnackBar(const SnackBar(content: Text('업체 정보를 찾지 못했습니다.')));
       return;
     }
-    if (_receiptImage == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('영수증 이미지를 먼저 추가해 주세요')));
-      return;
-    }
     if (_textCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(
         context,
@@ -2343,13 +2290,16 @@ class _ReviewWriteScreenState extends State<_ReviewWriteScreen> {
     setState(() => _isSubmitting = true);
 
     try {
-      final receipt = await ShopService.uploadReceipt(
-        shopId: shopId,
-        image: _receiptImage!,
-      );
-      final receiptId = (receipt['id'] as num?)?.toInt();
-      if (receiptId == null) {
-        throw Exception('영수증 업로드 응답이 올바르지 않습니다.');
+      int? receiptId;
+      if (_receiptImage != null) {
+        final receipt = await ShopService.uploadReceipt(
+          shopId: shopId,
+          image: _receiptImage!,
+        );
+        receiptId = (receipt["id"] as num?)?.toInt();
+        if (receiptId == null) {
+          throw Exception("영수증 업로드 응답이 올바르지 않습니다.");
+        }
       }
 
       await ShopService.writeReview(
@@ -2445,7 +2395,7 @@ class _ReviewWriteScreenState extends State<_ReviewWriteScreen> {
             Row(
               children: const [
                 Text(
-                  '영수증',
+                  '영수증 (선택)',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,

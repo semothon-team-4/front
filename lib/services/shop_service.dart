@@ -143,17 +143,20 @@ class ShopService {
 
   static Future<Map<String, dynamic>> writeReview({
     required int shopId,
-    required int receiptId,
+    int? receiptId,
     required int rating,
     required String content,
     List<File> images = const [],
   }) async {
+    final query = <String, String>{
+      "rating": rating.toString(),
+      "content": content,
+      if (receiptId != null) "receiptId": receiptId.toString(),
+    };
     final uri = Uri.parse(
-      '${ApiConfig.baseUrl}/shops/$shopId/reviews'
-      '?receiptId=$receiptId'
-      '&rating=$rating'
-      '&content=${Uri.encodeQueryComponent(content)}',
-    );
+      "${ApiConfig.baseUrl}/shops/$shopId/reviews",
+    ).replace(queryParameters: query);
+
     final request = http.MultipartRequest('POST', uri)
       ..headers.addAll(AuthService.authorizedHeaders());
 
