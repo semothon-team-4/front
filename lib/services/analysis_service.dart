@@ -32,29 +32,62 @@ class AnalysisService {
     );
   }
 
-  static Future<List<Map<String, dynamic>>> fetchMyAnalyses() async {
+  static Future<Map<String, dynamic>> fetchMyCloset() async {
     final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/analyses'),
+      Uri.parse("${ApiConfig.baseUrl}/analyses"),
       headers: AuthService.authorizedHeaders(),
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception('옷장 목록을 불러오지 못했습니다.');
+      throw Exception("옷장 목록을 불러오지 못했습니다.");
     }
 
     final body = jsonDecode(response.body) as Map<String, dynamic>;
-    final data = (body['data'] as List?) ?? const [];
+    final data = Map<String, dynamic>.from((body["data"] as Map?) ?? {});
+    final rawItems = (data["items"] as List?) ?? const [];
 
-    return data.map((item) {
+    final items = rawItems.map((item) {
       final map = Map<String, dynamic>.from(item as Map);
+      final rawGrade = map["grade"]?.toString().trim();
+      final grade = (rawGrade == null || rawGrade.isEmpty)
+          ? null
+          : rawGrade.toUpperCase();
       return {
-        'id': map['id'],
-        'name': map['name'] ?? '',
-        'category': map['category'] ?? '기타',
-        'imageUrl': map['imageUrl'] ?? '',
-        'createdAt': map['createdAt'] ?? '',
+        "id": map["id"],
+        "name": map["name"] ?? "",
+        "category": map["category"] ?? "기타",
+        "grade": grade,
+        "imageUrl": _resolveImageUrl(map["imageUrl"]),
+        "careLabels": (map["careLabels"] as List? ?? const []).map((e) {
+          final label = Map<String, dynamic>.from(e as Map);
+          label["imageUrl"] = _resolveImageUrl(label["imageUrl"]);
+          return label;
+        }).toList(),
+        "createdAt": map["createdAt"] ?? "",
       };
     }).toList();
+
+    final rawCounts = Map<String, dynamic>.from(
+      (data["gradeCounts"] as Map?) ?? {},
+    );
+    final gradeCounts = <String, int>{"A": 0, "B": 0, "C": 0, "D": 0};
+    for (final key in gradeCounts.keys) {
+      gradeCounts[key] = (rawCounts[key] as num?)?.toInt() ?? 0;
+    }
+
+    final totalCount = (data["totalCount"] as num?)?.toInt() ?? items.length;
+
+    return {
+      "items": items,
+      "gradeCounts": gradeCounts,
+      "totalCount": totalCount,
+    };
+  }
+
+  static Future<List<Map<String, dynamic>>> fetchMyAnalyses() async {
+    final closet = await fetchMyCloset();
+    final items = (closet["items"] as List?) ?? const [];
+    return items.map((item) => Map<String, dynamic>.from(item as Map)).toList();
   }
 
   static Future<Map<String, dynamic>> fetchAnalysisDetail(int id) async {
@@ -90,7 +123,7 @@ class AnalysisService {
     );
     final stainLevel = (condition['stainLevel'] as num?)?.toInt() ?? 0;
     final damageLevel = (condition['damageLevel'] as num?)?.toInt() ?? 0;
-    final grade = (condition['grade'] as String?)?.toUpperCase() ?? 'B';
+    final grade = (condition['grade'] as String?)?.toUpperCase();
 
     return {
       'id': raw['id'],
@@ -99,15 +132,32 @@ class AnalysisService {
       'grade': grade,
       'desc': condition['recommendation'] ?? '분석 결과를 확인해 주세요.',
       'recommendation': condition['recommendation'] ?? '분석 결과를 확인해 주세요.',
-      'imageUrl': raw['imageUrl'] ?? '',
+      'imageUrl': _resolveImageUrl(raw['imageUrl']),
       'createdAt': raw['createdAt'] ?? '',
       'stainLevel': stainLevel,
       'damageLevel': damageLevel,
       'lastCare': _formatRelative(raw['createdAt']?.toString()),
       'careLabels': ((raw['careLabel'] as Map?)?['labels'] as List? ?? const [])
-          .map((e) => Map<String, dynamic>.from(e as Map))
+          .map((e) {
+            final label = Map<String, dynamic>.from(e as Map);
+            label['imageUrl'] = _resolveImageUrl(label['imageUrl']);
+            return label;
+          })
           .toList(),
     };
+  }
+
+  static String _resolveImageUrl(dynamic value) {
+    final raw = value?.toString().trim() ?? '';
+    if (raw.isEmpty) return '';
+
+    final uri = Uri.tryParse(raw);
+    if (uri != null && uri.hasScheme) return raw;
+
+    if (raw.startsWith('/')) {
+      return '${ApiConfig.baseUrl}$raw';
+    }
+    return '${ApiConfig.baseUrl}/$raw';
   }
 
   static String _formatRelative(String? iso) {

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import '../services/business_store_service.dart';
 import '../services/image_service.dart';
+import '../services/profile_activity_service.dart';
 import '../services/shop_service.dart';
 import 'community_screen.dart';
 
@@ -732,7 +733,6 @@ class _BusinessCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final rating = business['rating'] as double;
     final likes = business['likes'] as int;
-    final isVerified = business['isVerified'] ?? false;
 
     return GestureDetector(
       onTap: onTap,
@@ -760,22 +760,17 @@ class _BusinessCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Text(
-                        business['name'] as String,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1D1B20),
+                      Expanded(
+                        child: Text(
+                          business['name'] as String,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1D1B20),
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      if (isVerified) ...[
-                        const SizedBox(width: 6),
-                        const Icon(
-                          Icons.check_circle,
-                          size: 16,
-                          color: Color(0xFF8BC34A),
-                        ),
-                      ],
                     ],
                   ),
                   const SizedBox(height: 2),
@@ -1072,6 +1067,7 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
   List<Map<String, dynamic>> _shopPrices = const [];
   List<Map<String, dynamic>> _shopReviews = const [];
   int _detailRequestId = 0;
+  final Set<String> _expandedReviewBadges = <String>{};
 
   @override
   void initState() {
@@ -1305,6 +1301,10 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
       return (_shopDetail!['rate'] as num).toDouble();
     }
     return (business['rating'] as double?) ?? 0;
+  }
+
+  String _reviewBadgeKey(Map<String, String> item) {
+    return '${item['user']}|${item['text']}';
   }
 
   int _resolvedReviewCount(Map<String, dynamic> business) {
@@ -1603,8 +1603,10 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
           ],
         ),
         const SizedBox(height: 14),
-        ...items.map(
-          (item) => Container(
+        ...items.map((item) {
+          final badgeKey = _reviewBadgeKey(item);
+          final showBadgeText = _expandedReviewBadges.contains(badgeKey);
+          return Container(
             width: double.infinity,
             margin: const EdgeInsets.only(bottom: 14),
             padding: const EdgeInsets.fromLTRB(0, 14, 0, 14),
@@ -1629,22 +1631,75 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
                       ),
                     ),
                     if (item['badge']!.isNotEmpty) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF9BEAFF),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          item['badge']!,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF2B7B92),
+                      const SizedBox(width: 6),
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            if (showBadgeText) {
+                              _expandedReviewBadges.remove(badgeKey);
+                            } else {
+                              _expandedReviewBadges.add(badgeKey);
+                            }
+                          });
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          curve: Curves.easeOut,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: showBadgeText ? 10 : 0,
+                            vertical: showBadgeText ? 5 : 0,
+                          ),
+                          decoration: BoxDecoration(
+                            color: showBadgeText
+                                ? const Color(0xFF8FEAFD)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 18,
+                                height: 18,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF43A047),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.check,
+                                  size: 12,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 180),
+                                transitionBuilder: (child, animation) =>
+                                    FadeTransition(
+                                      opacity: animation,
+                                      child: SizeTransition(
+                                        sizeFactor: animation,
+                                        axis: Axis.horizontal,
+                                        child: child,
+                                      ),
+                                    ),
+                                child: showBadgeText
+                                    ? Padding(
+                                        key: const ValueKey('badgeText'),
+                                        padding: const EdgeInsets.only(left: 6),
+                                        child: const Text(
+                                          '영수증 리뷰 완료 !',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                            color: Color(0xFF2B7B92),
+                                          ),
+                                        ),
+                                      )
+                                    : const SizedBox.shrink(
+                                        key: ValueKey('badgeEmpty'),
+                                      ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -1687,8 +1742,8 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
                 ),
               ],
             ),
-          ),
-        ),
+          );
+        }),
       ],
     );
   }
@@ -1848,41 +1903,6 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
                         ),
                       ),
                       const Spacer(),
-                      GestureDetector(
-                        onTap: widget.onLike,
-                        child: Container(
-                          width: 38,
-                          height: 38,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: const Color(0xFFD4D4D4)),
-                          ),
-                          child: Icon(
-                            isLiked ? Icons.favorite : Icons.favorite_border,
-                            color: const Color(0xFFFF7B8F),
-                            size: 22,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      GestureDetector(
-                        onTap: widget.onClose,
-                        child: Container(
-                          width: 38,
-                          height: 38,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: const Color(0xFFD4D4D4)),
-                          ),
-                          child: const Icon(
-                            Icons.close,
-                            size: 22,
-                            color: Color(0xFF8F8F8F),
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                   const SizedBox(height: 18),
@@ -1904,40 +1924,73 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          const SizedBox(width: 6),
-                          if (!isExpanded)
-                            const Icon(
-                              Icons.check_circle,
-                              size: 18,
-                              color: Color(0xFF43A047),
-                            ),
                         ],
                       ),
                     ),
                     if (!isCollapsed) ...[
                       GestureDetector(
                         onTap: widget.onLike,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Container(
+                          width: isExpanded ? 38 : 34,
+                          height: isExpanded ? 38 : 34,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isExpanded
+                                  ? const Color(0xFFD4D4D4)
+                                  : const Color(0xFFE1E1E1),
+                            ),
+                          ),
                           child: Icon(
                             isLiked ? Icons.favorite : Icons.favorite_border,
-                            color: isLiked
-                                ? Colors.red
-                                : const Color(0xFFBDBDBD),
-                            size: 24,
+                            color: isExpanded
+                                ? const Color(0xFFFF7B8F)
+                                : (isLiked
+                                      ? Colors.red
+                                      : const Color(0xFFBDBDBD)),
+                            size: isExpanded ? 22 : 20,
                           ),
                         ),
                       ),
+                      SizedBox(width: isExpanded ? 10 : 8),
                       GestureDetector(
                         onTap: widget.onClose,
-                        child: const Padding(
-                          padding: EdgeInsets.only(left: 4),
-                          child: Icon(
-                            Icons.close,
-                            size: 24,
-                            color: Color(0xFF9E9E9E),
-                          ),
-                        ),
+                        child: isExpanded
+                            ? Container(
+                                width: 38,
+                                height: 38,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: const Color(0xFFD4D4D4),
+                                  ),
+                                ),
+                                child: Icon(
+                                  isLiked
+                                      ? Icons.favorite
+                                      : Icons.favorite_border,
+                                  color: const Color(0xFFFF7B8F),
+                                  size: 22,
+                                ),
+                              )
+                            : Container(
+                                width: 34,
+                                height: 34,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: const Color(0xFFE1E1E1),
+                                  ),
+                                ),
+                                child: Icon(
+                                  Icons.close,
+                                  size: 20,
+                                  color: Color(0xFF9E9E9E),
+                                ),
+                              ),
                       ),
                     ],
                   ],
@@ -2254,6 +2307,7 @@ class _ReviewWriteScreen extends StatefulWidget {
 class _ReviewWriteScreenState extends State<_ReviewWriteScreen> {
   int _rating = 5;
   final _textCtrl = TextEditingController();
+  final _textFocusNode = FocusNode();
   File? _receiptImage;
   final List<File> _photos = [];
   bool _isSubmitting = false;
@@ -2261,6 +2315,7 @@ class _ReviewWriteScreenState extends State<_ReviewWriteScreen> {
   @override
   void dispose() {
     _textCtrl.dispose();
+    _textFocusNode.dispose();
     super.dispose();
   }
 
@@ -2305,6 +2360,15 @@ class _ReviewWriteScreenState extends State<_ReviewWriteScreen> {
         images: _photos,
       );
 
+      ProfileActivityService.addMyReview({
+        'shopId': shopId,
+        'shopName': widget.business['name']?.toString() ?? '세탁소',
+        'rating': _rating,
+        'content': _textCtrl.text.trim(),
+        'createdAt': DateTime.now().toIso8601String(),
+        'imagePath': _photos.isNotEmpty ? _photos.first.path : null,
+      });
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -2340,6 +2404,9 @@ class _ReviewWriteScreenState extends State<_ReviewWriteScreen> {
     if (file == null || !mounted) return;
     setState(() => _photos.add(file));
   }
+
+  bool get _showReviewPlaceholder =>
+      !_textFocusNode.hasFocus && _textCtrl.text.trim().isEmpty;
 
   @override
   Widget build(BuildContext context) {
@@ -2449,49 +2516,61 @@ class _ReviewWriteScreenState extends State<_ReviewWriteScreen> {
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(color: const Color(0xFF8FEAFD), width: 1.5),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Stack(
                 children: [
-                  const Row(
-                    children: [
-                      Icon(
-                        Icons.edit_outlined,
-                        size: 18,
-                        color: Color(0xFF808080),
-                      ),
-                      SizedBox(width: 4),
-                      Text(
-                        '경험을 공유해 주세요!',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF1D1B20),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    '$businessName에서의 경험은 어땠나요?\n욕설, 비방, 명예훼손성 표현은 누군가에게 상처가 될 수 있습니다.',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF9E9E9E),
-                      height: 1.6,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
                   TextField(
                     controller: _textCtrl,
-                    maxLines: 4,
-                    decoration: const InputDecoration(
-                      hintText: '후기를 입력해 주세요',
-                      hintStyle: TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFFBDBDBD),
-                      ),
-                      border: InputBorder.none,
-                    ),
+                    focusNode: _textFocusNode,
+                    maxLines: 6,
+                    minLines: 6,
+                    onChanged: (_) => setState(() {}),
+                    onTap: () => setState(() {}),
+                    decoration: const InputDecoration(border: InputBorder.none),
                   ),
+                  if (_showReviewPlaceholder)
+                    Positioned.fill(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onTap: () {
+                          _textFocusNode.requestFocus();
+                          setState(() {});
+                        },
+                        child: IgnorePointer(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Row(
+                                children: [
+                                  Icon(
+                                    Icons.edit_outlined,
+                                    size: 18,
+                                    color: Color(0xFF808080),
+                                  ),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    '경험을 공유해 주세요!',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF1D1B20),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                '$businessName에서의 경험은 어땠나요?\n욕설, 비방, 명예훼손성 표현은 누군가에게 상처가 될 수 있습니다.',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF9E9E9E),
+                                  height: 1.6,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),

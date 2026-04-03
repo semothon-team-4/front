@@ -14,7 +14,8 @@ class CareLabelScanScreen extends StatefulWidget {
   State<CareLabelScanScreen> createState() => _CareLabelScanScreenState();
 }
 
-class _CareLabelScanScreenState extends State<CareLabelScanScreen> with SingleTickerProviderStateMixin {
+class _CareLabelScanScreenState extends State<CareLabelScanScreen>
+    with SingleTickerProviderStateMixin {
   File? _scannedImage;
   Map<String, dynamic>? _analysisResult;
   bool _isAnalyzing = false;
@@ -50,19 +51,19 @@ class _CareLabelScanScreenState extends State<CareLabelScanScreen> with SingleTi
         _isAnalyzing = false;
         _scanComplete = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 
   void _reset() => setState(() {
-        _scannedImage = null;
-        _analysisResult = null;
-        _isAnalyzing = false;
-        _scanComplete = false;
-        _resultPage = -1;
-      });
+    _scannedImage = null;
+    _analysisResult = null;
+    _isAnalyzing = false;
+    _scanComplete = false;
+    _resultPage = -1;
+  });
 
   Future<void> _saveImage() async {
     if (_scannedImage == null) return;
@@ -84,15 +85,17 @@ class _CareLabelScanScreenState extends State<CareLabelScanScreen> with SingleTi
             ),
             backgroundColor: const Color(0xFF1A39FF),
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('저장 실패: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('저장 실패: $e')));
       }
     }
   }
@@ -217,8 +220,11 @@ class _CareLabelScanScreenState extends State<CareLabelScanScreen> with SingleTi
                     color: Color(0xFF8FEAFD),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.camera_alt,
-                      color: Color(0xFF1D1B20), size: 32),
+                  child: const Icon(
+                    Icons.camera_alt,
+                    color: Color(0xFF1D1B20),
+                    size: 32,
+                  ),
                 ),
               ),
               const SizedBox(width: 84),
@@ -229,8 +235,10 @@ class _CareLabelScanScreenState extends State<CareLabelScanScreen> with SingleTi
     );
   }
 
-  Widget _buildLargeIconButton(
-      {required IconData icon, required VoidCallback onTap}) {
+  Widget _buildLargeIconButton({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -239,7 +247,10 @@ class _CareLabelScanScreenState extends State<CareLabelScanScreen> with SingleTi
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.2),
           shape: BoxShape.circle,
-          border: Border.all(color: Colors.white.withValues(alpha: 0.6), width: 1.5),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.6),
+            width: 1.5,
+          ),
         ),
         child: Icon(icon, color: Colors.white, size: 20),
       ),
@@ -315,7 +326,9 @@ class _CareLabelScanScreenState extends State<CareLabelScanScreen> with SingleTi
     );
 
     if (confirmed == true && mounted) {
-      final name = nameCtrl.text.trim().isEmpty ? '스캔한 의류' : nameCtrl.text.trim();
+      final name = nameCtrl.text.trim().isEmpty
+          ? '스캔한 의류'
+          : nameCtrl.text.trim();
       final now = DateTime.now();
       try {
         if (_scannedImage != null) {
@@ -330,15 +343,20 @@ class _CareLabelScanScreenState extends State<CareLabelScanScreen> with SingleTi
           SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
+                const Icon(
+                  Icons.check_circle_outline,
+                  color: Colors.white,
+                  size: 20,
+                ),
                 const SizedBox(width: 10),
                 Text('"$name"이(가) 옷장에 저장되었어요!'),
               ],
             ),
             backgroundColor: const Color(0xFF1A39FF),
             behavior: SnackBarBehavior.floating,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
         );
         widget.onNavigate?.call(1);
@@ -381,7 +399,8 @@ class ClothingScanScreen extends StatefulWidget {
   State<ClothingScanScreen> createState() => _ClothingScanScreenState();
 }
 
-class _ClothingScanScreenState extends State<ClothingScanScreen> with SingleTickerProviderStateMixin {
+class _ClothingScanScreenState extends State<ClothingScanScreen>
+    with SingleTickerProviderStateMixin {
   File? _scannedImage;
   Map<String, dynamic>? _analysisResult;
   bool _isAnalyzing = false;
@@ -444,19 +463,19 @@ class _ClothingScanScreenState extends State<ClothingScanScreen> with SingleTick
         _isAnalyzing = false;
         _scanComplete = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 
   void _reset() => setState(() {
-        _scannedImage = null;
-        _analysisResult = null;
-        _isAnalyzing = false;
-        _scanComplete = false;
-        _resultPage = -1;
-      });
+    _scannedImage = null;
+    _analysisResult = null;
+    _isAnalyzing = false;
+    _scanComplete = false;
+    _resultPage = -1;
+  });
 
   Future<void> _saveImage() async {
     if (_scannedImage == null) return;
@@ -478,15 +497,17 @@ class _ClothingScanScreenState extends State<ClothingScanScreen> with SingleTick
             ),
             backgroundColor: const Color(0xFF1A39FF),
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('저장 실패: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('저장 실패: $e')));
       }
     }
   }
@@ -602,8 +623,11 @@ class _ClothingScanScreenState extends State<ClothingScanScreen> with SingleTick
                     color: Color(0xFF8FEAFD),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.camera_alt,
-                      color: Color(0xFF1D1B20), size: 32),
+                  child: const Icon(
+                    Icons.camera_alt,
+                    color: Color(0xFF1D1B20),
+                    size: 32,
+                  ),
                 ),
               ),
               const SizedBox(width: 84),
@@ -614,8 +638,10 @@ class _ClothingScanScreenState extends State<ClothingScanScreen> with SingleTick
     );
   }
 
-  Widget _buildLargeIconButton(
-      {required IconData icon, required VoidCallback onTap}) {
+  Widget _buildLargeIconButton({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -624,7 +650,10 @@ class _ClothingScanScreenState extends State<ClothingScanScreen> with SingleTick
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.2),
           shape: BoxShape.circle,
-          border: Border.all(color: Colors.white.withValues(alpha: 0.6), width: 1.5),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.6),
+            width: 1.5,
+          ),
         ),
         child: Icon(icon, color: Colors.white, size: 20),
       ),
@@ -660,7 +689,11 @@ class _ClothingScanScreenState extends State<ClothingScanScreen> with SingleTick
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
+            const Icon(
+              Icons.check_circle_outline,
+              color: Colors.white,
+              size: 20,
+            ),
             const SizedBox(width: 10),
             Text('"$name"이(가) 내 옷장에 등록되었어요!'),
           ],
@@ -680,7 +713,10 @@ class _ScanCompleteCard extends StatelessWidget {
   final bool isCareLabel;
   final VoidCallback onViewResult;
 
-  const _ScanCompleteCard({required this.isCareLabel, required this.onViewResult});
+  const _ScanCompleteCard({
+    required this.isCareLabel,
+    required this.onViewResult,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -721,13 +757,18 @@ class _ScanCompleteCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('스캔 완료!',
-                      style:
-                          TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                  const Text(
+                    '스캔 완료!',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 3),
-                  Text(isCareLabel ? '케어라벨을 발견했어요' : '의류를 인식했어요',
-                      style: const TextStyle(
-                          fontSize: 13, color: Color(0xFF9E9E9E))),
+                  Text(
+                    isCareLabel ? '케어라벨을 발견했어요' : '의류를 인식했어요',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF9E9E9E),
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -742,10 +783,13 @@ class _ScanCompleteCard extends StatelessWidget {
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
-              child: const Text('결과 확인하기',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+              child: const Text(
+                '결과 확인하기',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+              ),
             ),
           ),
         ],
