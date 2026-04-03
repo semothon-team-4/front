@@ -64,6 +64,72 @@ class AnalysisResultView extends StatelessWidget {
         : _buildClothingResult(context);
   }
 
+  Widget _buildResultImage({
+    required double width,
+    required double height,
+    required IconData fallbackIcon,
+    required Color fallbackColor,
+    required Color fallbackIconColor,
+  }) {
+    if (image != null) {
+      return Image.file(
+        image!,
+        width: width,
+        height: height,
+        fit: BoxFit.cover,
+      );
+    }
+
+    final result = analysisResult ?? const <String, dynamic>{};
+    final rawImageUrl = (result['imageUrl'] as String?)?.trim() ?? '';
+    final rawImagePath = (result['imagePath'] as String?)?.trim() ?? '';
+    final localFile = rawImagePath.isNotEmpty ? File(rawImagePath) : null;
+    final hasLocalImage = localFile != null && localFile.existsSync();
+
+    if (hasLocalImage) {
+      return Image.file(
+        localFile,
+        width: width,
+        height: height,
+        fit: BoxFit.cover,
+      );
+    }
+
+    if (rawImageUrl.isNotEmpty) {
+      return Image.network(
+        rawImageUrl,
+        width: width,
+        height: height,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => Container(
+          width: width,
+          height: height,
+          color: fallbackColor,
+          child: Center(
+            child: Icon(
+              fallbackIcon,
+              color: fallbackIconColor,
+              size: 70,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      width: width,
+      height: height,
+      color: fallbackColor,
+      child: Center(
+        child: Icon(
+          fallbackIcon,
+          color: fallbackIconColor,
+          size: 70,
+        ),
+      ),
+    );
+  }
+
   // ──── 케어라벨 스캔 결과 ──────────────────────────
   Widget _buildCareLabelResult(BuildContext context) {
     final result = analysisResult ?? const <String, dynamic>{};
@@ -394,25 +460,13 @@ class AnalysisResultView extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: image != null
-                    ? Image.file(
-                        image!,
-                        width: double.infinity,
-                        height: 260,
-                        fit: BoxFit.cover,
-                      )
-                    : Container(
-                        width: double.infinity,
-                        height: 260,
-                        color: const Color(0xFFF8FAFF),
-                        child: const Center(
-                          child: Icon(
-                            Icons.checkroom,
-                            color: Color(0xFFCFD8DC),
-                            size: 70,
-                          ),
-                        ),
-                      ),
+                child: _buildResultImage(
+                  width: double.infinity,
+                  height: 260,
+                  fallbackIcon: Icons.checkroom,
+                  fallbackColor: const Color(0xFFF8FAFF),
+                  fallbackIconColor: const Color(0xFFCFD8DC),
+                ),
               ),
               const SizedBox(height: 14),
               Text(
