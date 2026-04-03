@@ -20,6 +20,7 @@ void openCommunityPostDetail(
   bool? isLiked,
   int? likes,
   void Function(bool liked, int likes)? onLikeChanged,
+  void Function(bool liked, int likes, int comments)? onPostChanged,
 }) {
   final normalizedPost = <String, dynamic>{
     'user': '닉네임1',
@@ -46,6 +47,7 @@ void openCommunityPostDetail(
         isLiked: isLiked ?? (normalizedPost['isLiked'] as bool?) ?? false,
         likes: likes ?? (normalizedPost['likes'] as int?) ?? 0,
         onLikeChanged: onLikeChanged ?? (liked, likes) {},
+        onPostChanged: onPostChanged ?? (liked, likes, comments) {},
       ),
     ),
   );
@@ -212,6 +214,33 @@ class _CommunityScreenState extends State<CommunityScreen>
     }
   }
 
+  void _updatePostStats({
+    required int? postId,
+    required bool liked,
+    required int likes,
+    required int comments,
+  }) {
+    if (postId == null) return;
+
+    Map<String, dynamic> update(Map<String, dynamic> post) {
+      if ((post['id'] as num?)?.toInt() != postId) {
+        return post;
+      }
+
+      return {
+        ...post,
+        'isLiked': liked,
+        'likes': likes,
+        'comments': comments,
+      };
+    }
+
+    setState(() {
+      _posts = _posts.map(update).toList();
+      _popularPosts = _popularPosts.map(update).toList();
+    });
+  }
+
   List<Map<String, dynamic>> _derivePopularPosts(
     List<Map<String, dynamic>> posts,
   ) {
@@ -242,21 +271,25 @@ class _CommunityScreenState extends State<CommunityScreen>
     setState(() => _isSubmitting = true);
 
     try {
+      final analysisId = (result['analysisId'] as num?)?.toInt();
+      final imagePath = (result['imagePath'] as String?)?.trim() ?? '';
+      final image = analysisId == null && imagePath.isNotEmpty
+          ? File(imagePath)
+          : null;
+
       await CommunityService.createPost(
         title: (result['title'] as String?)?.trim() ?? '',
         content: (result['content'] as String?)?.trim() ?? '',
+        category: (result['category'] as String?)?.trim() ?? '세탁팁',
+        analysisId: analysisId,
+        image: image,
       );
       await _loadPosts(showLoader: false);
       if (!mounted) return;
 
-      final hasImage = (result['hasImage'] as bool?) ?? false;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            hasImage
-                ? '게시글이 등록되었습니다. 현재 서버에서는 이미지 업로드가 지원되지 않아 본문만 저장됐어요.'
-                : '게시글이 등록되었습니다!',
-          ),
+          content: const Text('게시글이 등록되었습니다!'),
           backgroundColor: const Color(0xFF1A39FF),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
@@ -548,7 +581,20 @@ class _CommunityScreenState extends State<CommunityScreen>
                             vertical: 4,
                           ),
                           child: GestureDetector(
-                            onTap: () => openCommunityPostDetail(context, p),
+                            onTap: () => openCommunityPostDetail(
+                              context,
+                              p,
+                              isLiked: p['isLiked'] as bool? ?? false,
+                              likes: p['likes'] as int? ?? 0,
+                              onPostChanged: (liked, likes, comments) {
+                                _updatePostStats(
+                                  postId: (p['id'] as num?)?.toInt(),
+                                  liked: liked,
+                                  likes: likes,
+                                  comments: comments,
+                                );
+                              },
+                            ),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 14,
@@ -617,7 +663,17 @@ class _CommunityScreenState extends State<CommunityScreen>
                             horizontal: 16,
                             vertical: 4,
                           ),
-                          child: _PostCard(post: p),
+                          child: _PostCard(
+                            post: p,
+                            onPostChanged: (liked, likes, comments) {
+                              _updatePostStats(
+                                postId: (p['id'] as num?)?.toInt(),
+                                liked: liked,
+                                likes: likes,
+                                comments: comments,
+                              );
+                            },
+                          ),
                         ),
                       ),
                     ],
@@ -673,7 +729,9 @@ class _LikeIcon extends StatelessWidget {
 
 class _PostCard extends StatefulWidget {
   final Map<String, dynamic> post;
-  const _PostCard({required this.post});
+  final void Function(bool liked, int likes, int comments)? onPostChanged;
+
+  const _PostCard({required this.post, this.onPostChanged});
 
   @override
   State<_PostCard> createState() => _PostCardState();
@@ -682,6 +740,7 @@ class _PostCard extends StatefulWidget {
 class _PostCardState extends State<_PostCard> {
   late bool _isLiked;
   late int _likes;
+  late int _comments;
   bool _isLikeBusy = false;
 
   @override
@@ -689,6 +748,7 @@ class _PostCardState extends State<_PostCard> {
     super.initState();
     _isLiked = widget.post['isLiked'] as bool;
     _likes = widget.post['likes'] as int;
+    _comments = widget.post['comments'] as int? ?? 0;
   }
 
   @override
@@ -696,9 +756,11 @@ class _PostCardState extends State<_PostCard> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.post['id'] != widget.post['id'] ||
         oldWidget.post['likes'] != widget.post['likes'] ||
-        oldWidget.post['isLiked'] != widget.post['isLiked']) {
+        oldWidget.post['isLiked'] != widget.post['isLiked'] ||
+        oldWidget.post['comments'] != widget.post['comments']) {
       _isLiked = widget.post['isLiked'] as bool;
       _likes = widget.post['likes'] as int;
+      _comments = widget.post['comments'] as int? ?? 0;
     }
   }
 
@@ -776,13 +838,26 @@ class _PostCardState extends State<_PostCard> {
     return GestureDetector(
       onTap: () => openCommunityPostDetail(
         context,
-        {...widget.post, 'isLiked': _isLiked, 'likes': _likes},
+        {
+          ...widget.post,
+          'isLiked': _isLiked,
+          'likes': _likes,
+          'comments': _comments,
+        },
         isLiked: _isLiked,
         likes: _likes,
         onLikeChanged: (liked, count) => setState(() {
           _isLiked = liked;
           _likes = count;
         }),
+        onPostChanged: (liked, likes, comments) {
+          setState(() {
+            _isLiked = liked;
+            _likes = likes;
+            _comments = comments;
+          });
+          widget.onPostChanged?.call(liked, likes, comments);
+        },
       ),
       child: Container(
         margin: const EdgeInsets.only(bottom: 14),
@@ -930,36 +1005,13 @@ class _PostCardState extends State<_PostCard> {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        '${widget.post['comments']}',
+                        '$_comments',
                         style: const TextStyle(
                           fontSize: 13,
                           color: Color(0xFF90A4AE),
                         ),
                       ),
                     ],
-                  ),
-                  const Spacer(),
-                  GestureDetector(
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            '"${widget.post['title']}" 링크가 복사되었습니다',
-                          ),
-                          backgroundColor: const Color(0xFF1A39FF),
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          duration: const Duration(seconds: 2),
-                        ),
-                      );
-                    },
-                    child: const Icon(
-                      Icons.share_outlined,
-                      size: 18,
-                      color: Color(0xFFB0BEC5),
-                    ),
                   ),
                 ],
               ),
@@ -1068,12 +1120,14 @@ class _PostDetailScreen extends StatefulWidget {
   final bool isLiked;
   final int likes;
   final void Function(bool, int) onLikeChanged;
+  final void Function(bool liked, int likes, int comments) onPostChanged;
 
   const _PostDetailScreen({
     required this.post,
     required this.isLiked,
     required this.likes,
     required this.onLikeChanged,
+    required this.onPostChanged,
   });
 
   @override
@@ -1142,6 +1196,7 @@ class _PostDetailScreenState extends State<_PostDetailScreen> {
             .toList();
       });
       widget.onLikeChanged(_isLiked, _likes);
+      widget.onPostChanged(_isLiked, _likes, _comments.length);
     } catch (_) {
       if (!mounted) return;
     } finally {
@@ -1209,6 +1264,7 @@ class _PostDetailScreenState extends State<_PostDetailScreen> {
           'time': '방금 전',
         });
       });
+      widget.onPostChanged(_isLiked, _likes, _comments.length);
       _commentCtrl.clear();
       FocusScope.of(context).unfocus();
       return;
@@ -1272,31 +1328,6 @@ class _PostDetailScreenState extends State<_PostDetailScreen> {
             color: catColor,
           ),
         ),
-        actions: [
-          GestureDetector(
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('"${_post['title']}" 링크가 복사되었습니다'),
-                  backgroundColor: const Color(0xFF1A39FF),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  duration: const Duration(seconds: 2),
-                ),
-              );
-            },
-            child: const Padding(
-              padding: EdgeInsets.only(right: 16),
-              child: Icon(
-                Icons.share_outlined,
-                size: 20,
-                color: Color(0xFF9E9E9E),
-              ),
-            ),
-          ),
-        ],
       ),
       body: Column(
         children: [

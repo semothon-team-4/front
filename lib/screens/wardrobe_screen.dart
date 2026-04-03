@@ -157,18 +157,16 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
 
   void _openShareSheet(Map<String, dynamic> item) {
     final itemName = (item['name'] as String?) ?? '의류';
-    final itemGrade = (item['grade'] as String?) ?? 'TAG';
-    final itemDesc = (item['desc'] as String?) ?? '분석 결과를 확인해 주세요.';
-    final itemLastCare = (item['lastCare'] as String?) ?? '방금 전';
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => SharePostSheet(
-        initialTitle: '$itemName 상태 공유 ($itemGrade등급)',
-        initialContent: '$itemDesc\n\n마지막 세탁: $itemLastCare',
+        initialTitle: buildWardrobeShareTitle(item),
+        initialContent: '',
         category: '의류상태',
+        analysisId: (item['id'] as num?)?.toInt(),
         imagePreview: Container(
           height: 120,
           color: ((item['iconColor'] as Color?) ?? const Color(0xFF9E9E9E))

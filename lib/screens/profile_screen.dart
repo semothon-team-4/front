@@ -973,10 +973,11 @@ class _RecentPostCard extends StatelessWidget {
             const SizedBox(height: 12),
             Row(
               children: [
-                const Icon(
-                  Icons.favorite_rounded,
-                  size: 16,
-                  color: Color(0xFFFF7B8F),
+                Image.asset(
+                  'assets/images/profile_quick_interest_post.png',
+                  width: 16,
+                  height: 16,
+                  fit: BoxFit.contain,
                 ),
                 const SizedBox(width: 4),
                 Text(
