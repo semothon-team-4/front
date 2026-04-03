@@ -69,6 +69,283 @@ class _TutorialScreenState extends State<TutorialScreen> {
     );
   }
 
+  Widget _buildDefaultPage(
+    ({Color accent, String description, IconData icon, String title}) page,
+    BoxConstraints constraints,
+  ) {
+    return Center(
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.topCenter,
+        child: SizedBox(
+          width: constraints.maxWidth,
+          child: Column(
+            children: [
+              const SizedBox(height: 76),
+              Container(
+                width: 112,
+                height: 112,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE6F8FF),
+                  borderRadius: BorderRadius.circular(21),
+                ),
+                child: Icon(
+                  page.icon,
+                  size: 54,
+                  color: const Color(0xFF8EDDF4),
+                ),
+              ),
+              const SizedBox(height: 30),
+              Text(
+                page.title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 23,
+                  height: 1.38,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF1D1B20),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                page.description,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 15,
+                  height: 1.45,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF6E6E6E),
+                ),
+              ),
+              const SizedBox(height: 34),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLastPage(
+    ({Color accent, String description, IconData icon, String title}) page,
+    BoxConstraints constraints,
+  ) {
+    return Center(
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.topCenter,
+        child: SizedBox(
+          width: constraints.maxWidth,
+          child: Column(
+            children: [
+              const SizedBox(height: 76),
+              Container(
+                width: 112,
+                height: 112,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE6F8FF),
+                  borderRadius: BorderRadius.circular(21),
+                ),
+                child: const Icon(
+                  Icons.forum_rounded,
+                  size: 50,
+                  color: Color(0xFF8EDDF4),
+                ),
+              ),
+              const SizedBox(height: 30),
+              Text(
+                page.title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 23,
+                  height: 1.38,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF1D1B20),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                page.description,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 15,
+                  height: 1.45,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF6E6E6E),
+                ),
+              ),
+              const SizedBox(height: 34),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDefaultBottomControls() {
+    return SizedBox(
+      height: 194,
+      child: Stack(
+        alignment: Alignment.topCenter,
+        children: [
+          Positioned(
+            top: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(_pages.length, (index) {
+                final isActive = index == _currentPage;
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  width: isActive ? 22 : 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? const Color(0xFF1A39FF)
+                        : const Color(0xFFD0D7DE),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                );
+              }),
+            ),
+          ),
+          Positioned(
+            top: 98,
+            left: 34,
+            right: 34,
+            child: SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: _goNext,
+                style: TextButton.styleFrom(
+                  backgroundColor: const Color(0xFF8FEAFD),
+                  foregroundColor: const Color(0xFF1D1B20),
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(32),
+                  ),
+                ),
+                child: const Text(
+                  '다음',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 148,
+            child: TextButton(
+              onPressed: _skip,
+              child: const Text(
+                '건너뛰기',
+                style: TextStyle(
+                  color: Color(0xFF9A9A9A),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLastBottomControls() {
+    return SizedBox(
+      height: 194,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.topCenter,
+        children: [
+          Positioned(
+            top: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(_pages.length, (index) {
+                final isActive = index == _currentPage;
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  width: isActive ? 22 : 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? const Color(0xFF1A39FF)
+                        : const Color(0xFFD0D7DE),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                );
+              }),
+            ),
+          ),
+          Positioned(
+            top: 22,
+            child: Container(
+              width: 108,
+              height: 94,
+              alignment: Alignment.bottomCenter,
+              color: Colors.white,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: ClipRect(
+                      child: Transform.translate(
+                        offset: const Offset(-4, 8),
+                        child: Image.asset(
+                          'assets/images/tutorial_last_mascot.png',
+                          width: 112,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: 9,
+                    child: Container(color: Colors.white),
+                  ),
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    width: 5,
+                    bottom: 0,
+                    child: Container(color: Colors.white),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            top: 102,
+            left: 34,
+            right: 34,
+            child: SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: _goNext,
+                style: TextButton.styleFrom(
+                  backgroundColor: const Color(0xFF8FEAFD),
+                  foregroundColor: const Color(0xFF1D1B20),
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(32),
+                  ),
+                  minimumSize: const Size.fromHeight(0),
+                ),
+                child: const Text(
+                  '시작하기',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -89,72 +366,10 @@ class _TutorialScreenState extends State<TutorialScreen> {
                     padding: const EdgeInsets.fromLTRB(28, 18, 28, 0),
                     child: LayoutBuilder(
                       builder: (context, constraints) {
-                        final isCompact = constraints.maxHeight < 620;
-                        return Center(
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.topCenter,
-                            child: SizedBox(
-                              width: constraints.maxWidth,
-                              child: Column(
-                                children: [
-                                  SizedBox(height: isCompact ? 42 : 64),
-                                  Container(
-                                    width: isCompact ? 112 : 126,
-                                    height: isCompact ? 112 : 126,
-                                    decoration: BoxDecoration(
-                                      color: page.accent,
-                                      borderRadius: BorderRadius.circular(22),
-                                    ),
-                                    child: Icon(
-                                      page.icon,
-                                      size: isCompact ? 52 : 58,
-                                      color: const Color(0xFF8EDDF4),
-                                    ),
-                                  ),
-                                  SizedBox(height: isCompact ? 24 : 30),
-                                  Text(
-                                    page.title,
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontSize: isCompact ? 21 : 23,
-                                      height: 1.4,
-                                      fontWeight: FontWeight.w800,
-                                      color: const Color(0xFF1D1B20),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Text(
-                                    page.description,
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontSize: isCompact ? 14 : 15,
-                                      height: 1.55,
-                                      fontWeight: FontWeight.w600,
-                                      color: const Color(0xFF6E6E6E),
-                                    ),
-                                  ),
-                                  SizedBox(height: isCompact ? 10 : 14),
-                                  Align(
-                                    alignment: const Alignment(1.08, 0),
-                                    child: Transform.translate(
-                                      offset: Offset(
-                                        isCompact ? 26 : 34,
-                                        isCompact ? -6 : -10,
-                                      ),
-                                      child: Image.asset(
-                                        'assets/images/tutorial_mascot_wave.png',
-                                        width: isCompact ? 154 : 186,
-                                        fit: BoxFit.contain,
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(height: isCompact ? 0 : 2),
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
+                        final isLastPage = index == _pages.length - 1;
+                        return isLastPage
+                            ? _buildLastPage(page, constraints)
+                            : _buildDefaultPage(page, constraints);
                       },
                     ),
                   );
@@ -163,62 +378,9 @@ class _TutorialScreenState extends State<TutorialScreen> {
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(28, 0, 28, 18),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(_pages.length, (index) {
-                      final isActive = index == _currentPage;
-                      return AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        width: isActive ? 22 : 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: isActive
-                              ? const Color(0xFF1A39FF)
-                              : const Color(0xFFD0D7DE),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                      );
-                    }),
-                  ),
-                  const SizedBox(height: 14),
-                  SizedBox(
-                    width: double.infinity,
-                    child: TextButton(
-                      onPressed: _goNext,
-                      style: TextButton.styleFrom(
-                        backgroundColor: const Color(0xFF8FEAFD),
-                        foregroundColor: const Color(0xFF1D1B20),
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(32),
-                        ),
-                      ),
-                      child: Text(
-                        _currentPage == _pages.length - 1 ? '시작하기' : '다음',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextButton(
-                    onPressed: _skip,
-                    child: const Text(
-                      '건너뛰기',
-                      style: TextStyle(
-                        color: Color(0xFF9A9A9A),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+              child: _currentPage == _pages.length - 1
+                  ? _buildLastBottomControls()
+                  : _buildDefaultBottomControls(),
             ),
           ],
         ),

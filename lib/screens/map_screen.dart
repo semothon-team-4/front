@@ -1227,10 +1227,15 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
   }
 
   List<Map<String, String>> _resolvedPriceItems(Map<String, dynamic> business) {
-    final name = business['name']?.toString().trim() ?? '';
-    final address = business['address']?.toString().trim() ?? '';
+    final name = (business['name']?.toString() ?? '').replaceAll(' ', '');
+    final address = (business['address']?.toString() ?? '').replaceAll(' ', '');
 
-    if (name == '주공세탁소' && address == '경기 수원시 영통구 영통동 964-8') {
+    final isJugongLaundry = name.contains('주공세탁소');
+    final isJugongAddress =
+        address.contains('경기수원시영통구영통동964-8') ||
+        address.contains('경기수원시영통구영통로290번길23');
+
+    if (isJugongLaundry && isJugongAddress) {
       return _jugongLaundryPriceItems();
     }
 
@@ -1426,14 +1431,6 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
       return (_shopDetail!['reviewCount'] as num).toInt();
     }
     return (business['reviews'] as int?) ?? 0;
-  }
-
-  void _collapseSheet() {
-    widget.compactSheetCtrl.animateTo(
-      0.35,
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOut,
-    );
   }
 
   Widget _buildTabButton(String label, int index) {
@@ -1941,22 +1938,7 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
               controller: widget.scrollCtrl,
               padding: EdgeInsets.fromLTRB(16, isExpanded ? 8 : 0, 16, 20),
               children: [
-                if (isExpanded) ...[
-                  Row(
-                    children: [
-                      GestureDetector(
-                        onTap: _collapseSheet,
-                        child: const Icon(
-                          Icons.arrow_back,
-                          size: 28,
-                          color: Color(0xFF1D1B20),
-                        ),
-                      ),
-                      const Spacer(),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-                ],
+                if (isExpanded) const SizedBox(height: 18),
 
                 Row(
                   children: [
