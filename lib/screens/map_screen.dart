@@ -350,6 +350,11 @@ class _MapScreenState extends State<MapScreen> {
   @override
   Widget build(BuildContext context) {
     final sorted = _filteredAndSorted;
+    final mediaQuery = MediaQuery.of(context);
+    final compactSheetMaxExtent =
+        ((mediaQuery.size.height - (mediaQuery.padding.top + 18)) /
+                mediaQuery.size.height)
+            .clamp(0.12, 1.0);
     return Scaffold(
       body: Stack(
         children: [
@@ -471,9 +476,9 @@ class _MapScreenState extends State<MapScreen> {
               controller: _compactSheetCtrl,
               initialChildSize: 0.35,
               minChildSize: 0.12,
-              maxChildSize: 1.0,
+              maxChildSize: compactSheetMaxExtent,
               snap: true,
-              snapSizes: const [0.12, 0.35, 1.0],
+              snapSizes: [0.12, 0.35, compactSheetMaxExtent],
               builder: (context, scrollCtrl) => _BusinessCompactCard(
                 key: ValueKey(
                   _selectedBusiness!['id'] ?? _selectedBusiness!['name'],
@@ -482,6 +487,7 @@ class _MapScreenState extends State<MapScreen> {
                 scrollCtrl: scrollCtrl,
                 compactSheetCtrl: _compactSheetCtrl,
                 currentExtent: _compactSheetExtent,
+                maxExtent: compactSheetMaxExtent,
                 onClose: () async {
                   setState(() => _selectedBusiness = null);
                   await _refreshMapMarkers();
@@ -1126,6 +1132,7 @@ class _BusinessCompactCard extends StatefulWidget {
   final ScrollController scrollCtrl;
   final DraggableScrollableController compactSheetCtrl;
   final double currentExtent;
+  final double maxExtent;
   final VoidCallback onClose;
   final VoidCallback onLike;
   final VoidCallback onWriteReview;
@@ -1137,6 +1144,7 @@ class _BusinessCompactCard extends StatefulWidget {
     required this.scrollCtrl,
     required this.compactSheetCtrl,
     required this.currentExtent,
+    required this.maxExtent,
     required this.onClose,
     required this.onLike,
     required this.onWriteReview,
@@ -1875,7 +1883,7 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
     ], '');
     final photoUrls = _resolvedPhotoUrls(business, imageUrl);
     final isCollapsed = widget.currentExtent < 0.2;
-    final isExpanded = widget.currentExtent > 0.8;
+    final isExpanded = widget.currentExtent > (widget.maxExtent - 0.08);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
@@ -1899,11 +1907,11 @@ class _BusinessCompactCardState extends State<_BusinessCompactCard> {
                 final delta = details.primaryDelta ?? 0;
                 final screenH = MediaQuery.of(context).size.height;
                 final newExtent = (widget.currentExtent - (delta / screenH))
-                    .clamp(0.12, 1.0);
+                    .clamp(0.12, widget.maxExtent);
                 widget.compactSheetCtrl.jumpTo(newExtent);
               },
               onVerticalDragEnd: (details) {
-                const snapSizes = [0.12, 0.35, 1.0];
+                final snapSizes = [0.12, 0.35, widget.maxExtent];
                 double closest = snapSizes.reduce(
                   (a, b) =>
                       (a - widget.currentExtent).abs() <
