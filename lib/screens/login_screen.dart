@@ -32,17 +32,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isSubmitting = true);
     try {
-      // [비활성화] 백엔드 서버 오프라인으로 인한 기존 로그인 로직 일시 중단
-      /*
       await AuthService.login(
         email: _emailCtrl.text.trim(),
         password: _passwordCtrl.text,
       );
-      */
-
-      // [임시 코드] 백엔드 연결 없이 바로 로그인 성공 처리
-      await Future.delayed(const Duration(milliseconds: 800));
-      // 여기까지
 
       if (!mounted) return;
       Navigator.of(
