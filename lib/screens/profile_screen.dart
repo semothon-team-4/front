@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/business_store_service.dart';
+import '../services/community_service.dart';
 import '../services/profile_activity_service.dart';
 import '../widgets/mascot_profile_avatar.dart';
 import 'community_screen.dart';
@@ -536,7 +537,7 @@ class _MyReviewsScreen extends StatelessWidget {
   }
 }
 
-class _RecentViewedPostsScreen extends StatelessWidget {
+class _RecentViewedPostsScreen extends StatefulWidget {
   final String nickname;
   final File? profileImage;
 
@@ -546,21 +547,127 @@ class _RecentViewedPostsScreen extends StatelessWidget {
   });
 
   @override
+  State<_RecentViewedPostsScreen> createState() => _RecentViewedPostsScreenState();
+}
+
+class _RecentViewedPostsScreenState extends State<_RecentViewedPostsScreen> {
+  bool _isLoading = true;
+  String? _error;
+  List<Map<String, dynamic>> _posts = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLikedPosts();
+  }
+
+  Future<void> _loadLikedPosts() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final posts = await CommunityService.fetchLikedPosts();
+      if (!mounted) return;
+      setState(() {
+        _posts = posts;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString().replaceFirst('Exception: ', '');
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _handlePostChanged(
+    Map<String, dynamic> post,
+    bool liked,
+    int likes,
+    int comments,
+  ) {
+    final postId = (post['id'] as num?)?.toInt();
+    if (postId == null) return;
+
+    setState(() {
+      if (!liked) {
+        _posts.removeWhere((item) => (item['id'] as num?)?.toInt() == postId);
+        return;
+      }
+
+      _posts = _posts.map((item) {
+        if ((item['id'] as num?)?.toInt() != postId) {
+          return item;
+        }
+        return {
+          ...item,
+          'isLiked': liked,
+          'likes': likes,
+          'comments': comments,
+        };
+      }).toList();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final posts = ProfileActivityService.getRecentViewedPosts();
     return _ProfileListScaffold(
       title: '관심 글',
-      nickname: nickname,
-      profileImage: profileImage,
+      nickname: widget.nickname,
+      profileImage: widget.profileImage,
       sectionImagePath: 'assets/images/profile_quick_interest_post.png',
-      emptyText: '아직 본 게시글이 없어요.',
-      isEmpty: posts.isEmpty,
-      child: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(18, 20, 18, 24),
-        itemCount: posts.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 12),
-        itemBuilder: (context, index) => _RecentPostCard(post: posts[index]),
-      ),
+      emptyText: '아직 좋아요한 글이 없어요.',
+      isEmpty: !_isLoading && _posts.isEmpty,
+      child: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.wifi_off_rounded,
+                      size: 42,
+                      color: Color(0xFFB0BEC5),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      _error!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        height: 1.5,
+                        color: Color(0xFF667085),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextButton(
+                      onPressed: _loadLikedPosts,
+                      child: const Text('다시 불러오기'),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : ListView.separated(
+              padding: const EdgeInsets.fromLTRB(18, 20, 18, 24),
+              itemCount: _posts.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 12),
+              itemBuilder: (context, index) => _RecentPostCard(
+                post: _posts[index],
+                onPostChanged: (liked, likes, comments) => _handlePostChanged(
+                  _posts[index],
+                  liked,
+                  likes,
+                  comments,
+                ),
+              ),
+            ),
     );
   }
 }
@@ -909,8 +1016,9 @@ class _MyReviewCard extends StatelessWidget {
 
 class _RecentPostCard extends StatelessWidget {
   final Map<String, dynamic> post;
+  final void Function(bool liked, int likes, int comments)? onPostChanged;
 
-  const _RecentPostCard({required this.post});
+  const _RecentPostCard({required this.post, this.onPostChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -918,7 +1026,13 @@ class _RecentPostCard extends StatelessWidget {
     final comments = (post['comments'] as num?)?.toInt() ?? 0;
 
     return InkWell(
-      onTap: () => openCommunityPostDetail(context, post),
+      onTap: () => openCommunityPostDetail(
+        context,
+        post,
+        isLiked: post['isLiked'] as bool? ?? false,
+        likes: (post['likes'] as num?)?.toInt() ?? 0,
+        onPostChanged: onPostChanged,
+      ),
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.all(16),

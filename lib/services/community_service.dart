@@ -46,6 +46,25 @@ class CommunityService {
         .toList();
   }
 
+  static Future<List<Map<String, dynamic>>> fetchLikedPosts() async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/profile/liked-posts'),
+      headers: _headers(requireAuth: true),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(
+        _extractMessage(response.body, fallback: '관심 글을 불러오지 못했습니다.'),
+      );
+    }
+
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    final items = (body['data'] as List?) ?? const [];
+    return items
+        .map((item) => _mapPostList(Map<String, dynamic>.from(item as Map)))
+        .toList();
+  }
+
   static Future<Map<String, dynamic>> fetchPostDetail(int postId) async {
     final response = await http.get(
       Uri.parse('${ApiConfig.baseUrl}/posts/$postId'),
