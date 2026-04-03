@@ -43,9 +43,10 @@ class AnalysisService {
     }
 
     final body = jsonDecode(response.body) as Map<String, dynamic>;
-    final data = (body['data'] as List?) ?? const [];
+    final data = Map<String, dynamic>.from((body['data'] as Map?) ?? {});
+    final items = (data['items'] as List?) ?? const [];
 
-    return data.map((item) {
+    return items.map((item) {
       final map = Map<String, dynamic>.from(item as Map);
       return {
         'id': map['id'],

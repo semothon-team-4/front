@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/analysis_service.dart';
 import '../services/image_service.dart';
+import '../services/wardrobe_db.dart';
 import 'community_screen.dart';
 
 // 스캔 모드: 케어라벨 스캔 vs 옷 스캔
@@ -449,6 +450,34 @@ class _ScanScreenState extends State<ScanScreen>
   Future<void> _saveToWardrobe() async {
     if (_mode == _ScanMode.clothing) {
       final name = (_analysisResult?['name'] as String?) ?? '스캔한 의류';
+      final category = (_analysisResult?['category'] as String?) ?? '기타';
+      final now = DateTime.now();
+      String? savedImagePath;
+
+      try {
+        if (_scannedImage != null) {
+          savedImagePath = await ImageService.saveImageLocally(
+            _scannedImage!,
+            'scan_${now.millisecondsSinceEpoch}.jpg',
+          );
+        }
+      } catch (_) {}
+
+      try {
+        final result = _analysisResult ?? const <String, dynamic>{};
+        await WardrobeDB.insertClothing({
+          'name': name,
+          'category': category,
+          'grade': (result['grade'] as String?) ?? 'B',
+          'desc':
+              (result['recommendation'] as String?) ??
+              (result['desc'] as String?) ??
+              '분석 결과를 확인해 주세요.',
+          'imagePath': savedImagePath ?? '',
+          'lastCare': now.toIso8601String(),
+        });
+      } catch (_) {}
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -536,13 +565,30 @@ class _ScanScreenState extends State<ScanScreen>
           ? '스캔한 의류'
           : nameCtrl.text.trim();
       final now = DateTime.now();
+      final selectedCategory = categoryNotifier.value;
+      String? savedImagePath;
       try {
         if (_scannedImage != null) {
-          await ImageService.saveImageLocally(
+          savedImagePath = await ImageService.saveImageLocally(
             _scannedImage!,
             'scan_${now.millisecondsSinceEpoch}.jpg',
           );
         }
+      } catch (_) {}
+
+      try {
+        final result = _analysisResult ?? const <String, dynamic>{};
+        await WardrobeDB.insertClothing({
+          'name': name,
+          'category': selectedCategory,
+          'grade': (result['grade'] as String?) ?? 'B',
+          'desc':
+              (result['recommendation'] as String?) ??
+              (result['desc'] as String?) ??
+              '분석 결과를 확인해 주세요.',
+          'imagePath': savedImagePath ?? '',
+          'lastCare': now.toIso8601String(),
+        });
       } catch (_) {}
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../widgets/share_post_sheet.dart';
 import '../services/analysis_service.dart';
+import '../services/wardrobe_db.dart';
 
 class WardrobeScreen extends StatefulWidget {
   final ValueChanged<int>? onNavigate;
@@ -32,35 +34,73 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
   }
 
   Future<void> _loadItems() async {
+    Map<String, dynamic> mapLocalItem(Map<String, dynamic> row) {
+      final category = (row["category"] as String?) ?? "기타";
+      final grade = ((row["grade"] as String?) ?? "B").toUpperCase();
+      final createdAt = row["createdAt"]?.toString() ?? "";
+      return {
+        "id": row["id"],
+        "name": row["name"] ?? "스캔한 의류",
+        "category": category,
+        "grade": grade,
+        "desc": row["desc"] ?? "분석 결과를 확인해 주세요.",
+        "recommendation": row["desc"] ?? "분석 결과를 확인해 주세요.",
+        "imageUrl": "",
+        "imagePath": row["imagePath"] ?? "",
+        "createdAt": createdAt,
+        "lastCare": createdAt.isEmpty ? "방금 전" : createdAt,
+        "stainLevel": 0,
+        "damageLevel": 0,
+        "careLabels": const <Map<String, dynamic>>[],
+        "iconColor": _colorForCategory(category),
+        "isLocal": true,
+      };
+    }
+
+    Future<List<Map<String, dynamic>>> loadLocalItems() async {
+      final rows = await WardrobeDB.getAllClothes();
+      return rows.map(mapLocalItem).toList();
+    }
+
     if (mounted) {
       setState(() => _loading = true);
     }
+
     try {
       final items = await AnalysisService.fetchMyAnalyses();
       final detailedItems = <Map<String, dynamic>>[];
       for (final item in items) {
-        final id = item['id'];
+        final id = item["id"];
         if (id is! int) continue;
         final detail = await AnalysisService.fetchAnalysisDetail(id);
         detailedItems.add({
           ...detail,
-          'iconColor': _colorForCategory((detail['category'] as String?) ?? ''),
+          "iconColor": _colorForCategory((detail["category"] as String?) ?? ""),
         });
       }
+
+      final resultItems = detailedItems.isNotEmpty
+          ? detailedItems
+          : await loadLocalItems();
+
       if (!mounted) return;
       setState(() {
-        _items = detailedItems;
+        _items = resultItems;
         _loading = false;
       });
     } catch (e) {
+      final localItems = await loadLocalItems();
       if (!mounted) return;
       setState(() {
-        _items = [];
+        _items = localItems;
         _loading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-      );
+
+      if (localItems.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst("Exception: ", ""))),
+        );
+      }
     }
   }
 
@@ -125,6 +165,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
               Positioned.fill(
                 child: _ClothingPreview(
                   imageUrl: (item['imageUrl'] as String?) ?? '',
+                  imagePath: (item['imagePath'] as String?) ?? '',
                   iconColor:
                       (item['iconColor'] as Color?) ?? const Color(0xFF9E9E9E),
                   iconSize: 44,
@@ -675,6 +716,7 @@ class _ClothingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final imageUrl = (item['imageUrl'] as String?) ?? '';
+    final imagePath = (item['imagePath'] as String?) ?? '';
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -706,6 +748,7 @@ class _ClothingCard extends StatelessWidget {
                     Positioned.fill(
                       child: _ClothingPreview(
                         imageUrl: imageUrl,
+                        imagePath: imagePath,
                         iconColor:
                             (item['iconColor'] as Color?) ??
                             const Color(0xFF9E9E9E),
@@ -846,6 +889,7 @@ class _ClothingDetailSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final imageUrl = (item['imageUrl'] as String?) ?? '';
+    final imagePath = (item['imagePath'] as String?) ?? '';
     return Container(
       height: MediaQuery.of(context).size.height * 0.65,
       decoration: const BoxDecoration(
@@ -888,6 +932,7 @@ class _ClothingDetailSheet extends StatelessWidget {
                             height: 84,
                             child: _ClothingPreview(
                               imageUrl: imageUrl,
+                              imagePath: imagePath,
                               iconColor:
                                   (item['iconColor'] as Color?) ??
                                   const Color(0xFF9E9E9E),
@@ -1121,12 +1166,14 @@ class _GradeBar extends StatelessWidget {
 
 class _ClothingPreview extends StatelessWidget {
   final String imageUrl;
+  final String imagePath;
   final Color iconColor;
   final BorderRadius? borderRadius;
   final double iconSize;
 
   const _ClothingPreview({
     required this.imageUrl,
+    required this.imagePath,
     required this.iconColor,
     this.borderRadius,
     required this.iconSize,
@@ -1134,6 +1181,19 @@ class _ClothingPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasLocalImage = imagePath.isNotEmpty && File(imagePath).existsSync();
+    if (hasLocalImage) {
+      return Container(
+        decoration: BoxDecoration(borderRadius: borderRadius),
+        clipBehavior: Clip.antiAlias,
+        child: Image.file(
+          File(imagePath),
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => _defaultImage(),
+        ),
+      );
+    }
+
     if (imageUrl.isNotEmpty) {
       return Container(
         decoration: BoxDecoration(borderRadius: borderRadius),
@@ -1141,7 +1201,7 @@ class _ClothingPreview extends StatelessWidget {
         child: Image.network(
           imageUrl,
           fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => _fallback(),
+          errorBuilder: (_, _, _) => _defaultImage(),
           loadingBuilder: (context, child, progress) {
             if (progress == null) return child;
             return Container(
@@ -1157,7 +1217,19 @@ class _ClothingPreview extends StatelessWidget {
         ),
       );
     }
-    return _fallback();
+    return _defaultImage();
+  }
+
+  Widget _defaultImage() {
+    return Container(
+      decoration: BoxDecoration(borderRadius: borderRadius),
+      clipBehavior: Clip.antiAlias,
+      child: Image.asset(
+        'assets/images/tshirt.png',
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => _fallback(),
+      ),
+    );
   }
 
   Widget _fallback() {
