@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 
 import 'api_config.dart';
 import 'auth_service.dart';
@@ -44,6 +46,25 @@ class CommunityService {
         .toList();
   }
 
+  static Future<List<Map<String, dynamic>>> fetchLikedPosts() async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/profile/liked-posts'),
+      headers: _headers(requireAuth: true),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(
+        _extractMessage(response.body, fallback: '관심 글을 불러오지 못했습니다.'),
+      );
+    }
+
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    final items = (body['data'] as List?) ?? const [];
+    return items
+        .map((item) => _mapPostList(Map<String, dynamic>.from(item as Map)))
+        .toList();
+  }
+
   static Future<Map<String, dynamic>> fetchPostDetail(int postId) async {
     final response = await http.get(
       Uri.parse('${ApiConfig.baseUrl}/posts/$postId'),
@@ -64,26 +85,44 @@ class CommunityService {
   static Future<int> createPost({
     required String title,
     required String content,
+    required String category,
     bool isPublic = true,
     int? analysisId,
+    File? image,
   }) async {
+    if (analysisId != null && image != null) {
+      throw Exception('옷장 선택과 이미지 첨부는 동시에 사용할 수 없습니다.');
+    }
+
     final payload = <String, dynamic>{
       'title': title,
       'content': content,
-      'public': isPublic,
+      'category': _toApiCategory(category),
+      'isPublic': isPublic,
     };
     if (analysisId != null) {
       payload['analysisId'] = analysisId;
     }
 
-    final response = await http.post(
+    final request = http.MultipartRequest(
+      'POST',
       Uri.parse('${ApiConfig.baseUrl}/posts'),
-      headers: _headers(
-        requireAuth: true,
-        extra: {'Content-Type': 'application/json'},
+    )..headers.addAll(_headers(requireAuth: true));
+
+    request.files.add(
+      http.MultipartFile.fromString(
+        'data',
+        jsonEncode(payload),
+        contentType: MediaType('application', 'json'),
       ),
-      body: jsonEncode(payload),
     );
+
+    if (image != null) {
+      request.files.add(await http.MultipartFile.fromPath('image', image.path));
+    }
+
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(
@@ -133,6 +172,7 @@ class CommunityService {
     final content = raw['content']?.toString() ?? '';
     final analysisName = raw['analysisName']?.toString() ?? '';
     final imageUrl = _resolveImageUrl(raw['analysisImageUrl']);
+    final backendCategory = raw['category']?.toString() ?? '';
 
     return {
       'id': raw['id'],
@@ -140,11 +180,13 @@ class CommunityService {
       'avatar': '🙋',
       'time': _formatRelative(raw['createdAt']?.toString()),
       'createdAt': raw['createdAt']?.toString() ?? '',
-      'category': _inferCategory(
-        analysisName: analysisName,
-        title: title,
-        content: content,
-      ),
+      'category': _mapCategory(backendCategory).isNotEmpty
+          ? _mapCategory(backendCategory)
+          : _inferCategory(
+              analysisName: analysisName,
+              title: title,
+              content: content,
+            ),
       'title': title,
       'content': content,
       'likes': (raw['likeCount'] as num?)?.toInt() ?? 0,
@@ -241,6 +283,36 @@ class CommunityService {
       return '의류상태';
     }
     return '세탁팁';
+  }
+
+  static String _mapCategory(String raw) {
+    switch (raw) {
+      case 'LAUNDRY_TIP':
+        return '세탁팁';
+      case 'REPAIR':
+        return '수선';
+      case 'RECOMMEND':
+        return '제품추천';
+      case 'CONDITION':
+        return '의류상태';
+      default:
+        return '';
+    }
+  }
+
+  static String _toApiCategory(String category) {
+    switch (category) {
+      case '세탁팁':
+        return 'LAUNDRY_TIP';
+      case '수선':
+        return 'REPAIR';
+      case '제품추천':
+        return 'RECOMMEND';
+      case '의류상태':
+        return 'CONDITION';
+      default:
+        return 'LAUNDRY_TIP';
+    }
   }
 
   static String _formatRelative(String? iso) {

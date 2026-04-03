@@ -1,10 +1,23 @@
 import 'package:flutter/material.dart';
 
+import '../services/community_service.dart';
+
+String buildWardrobeShareTitle(Map<String, dynamic> item) {
+  final itemName = (item['name'] as String?)?.trim();
+  final itemGrade = (item['grade'] as String?)?.trim();
+  final safeName = (itemName == null || itemName.isEmpty) ? '의류' : itemName;
+  final safeGrade = (itemGrade == null || itemGrade.isEmpty)
+      ? 'TAG'
+      : itemGrade;
+  return '$safeName 상태 공유 ($safeGrade등급)';
+}
+
 class SharePostSheet extends StatefulWidget {
   final String initialTitle;
   final String initialContent;
   final String category;
   final Widget? imagePreview;
+  final int? analysisId;
 
   const SharePostSheet({
     super.key,
@@ -12,6 +25,7 @@ class SharePostSheet extends StatefulWidget {
     this.initialContent = '',
     this.category = '세탁팁',
     this.imagePreview,
+    this.analysisId,
   });
 
   @override
@@ -22,6 +36,7 @@ class _SharePostSheetState extends State<SharePostSheet> {
   late TextEditingController _titleController;
   late TextEditingController _contentController;
   late String _selectedCategory;
+  bool _isSubmitting = false;
 
   final List<String> _categories = ['세탁팁', '수선', '제품추천', '의류상태'];
 
@@ -40,14 +55,45 @@ class _SharePostSheetState extends State<SharePostSheet> {
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (_titleController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('제목을 입력해주세요')),
       );
       return;
     }
-    Navigator.pop(context, true);
+    if (_contentController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('내용을 입력해주세요')),
+      );
+      return;
+    }
+    if (_isSubmitting) return;
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      await CommunityService.createPost(
+        title: _titleController.text.trim(),
+        content: _contentController.text.trim(),
+        category: _selectedCategory,
+        analysisId: widget.analysisId,
+      );
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
   }
 
   @override
@@ -86,14 +132,18 @@ class _SharePostSheetState extends State<SharePostSheet> {
                 const Spacer(),
                 IconButton(
                   icon: const Icon(Icons.close, color: Color(0xFF90A4AE)),
-                  onPressed: () => Navigator.pop(context, false),
+                  onPressed: _isSubmitting
+                      ? null
+                      : () => Navigator.pop(context, false),
                 ),
                 TextButton(
-                  onPressed: _submit,
-                  child: const Text(
-                    '등록',
+                  onPressed: _isSubmitting ? null : _submit,
+                  child: Text(
+                    _isSubmitting ? '등록 중...' : '등록',
                     style: TextStyle(
-                      color: Color(0xFF1565C0),
+                      color: _isSubmitting
+                          ? const Color(0xFFB0BEC5)
+                          : const Color(0xFF1565C0),
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
                     ),
